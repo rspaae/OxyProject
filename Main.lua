@@ -1,15 +1,14 @@
 -- =========================================================
--- [ FILE UTAMA: main.lua ]
+-- [ ARISE CROSSOVER HUB ]
 -- =========================================================
--- Petunjuk: Simpan semua kode ini di GitHub, lalu panggil
--- menggunakan loadstring(game:HttpGet("LINK_RAW"))()
+-- Script untuk Game Arise Crossover
 -- =========================================================
 
 -- [[ 1. KONFIGURASI & THEME ]] --
 local Theme = {
-    Main = Color3.fromRGB(30, 30, 30),
-    Sidebar = Color3.fromRGB(40, 40, 40),
-    Accent = Color3.fromRGB(0, 150, 255),
+    Main = Color3.fromRGB(20, 20, 25),
+    Sidebar = Color3.fromRGB(30, 30, 35),
+    Accent = Color3.fromRGB(150, 100, 255),
     Text = Color3.fromRGB(255, 255, 255)
 }
 
@@ -99,7 +98,14 @@ function Library:Init(hubName)
     local dragStart = Vector2.new(0, 0)
     local frameStart = UDim2.new(0, 0, 0, 0)
 
-    HeaderBar.InputBegan:Connect(function(input, gameProcessed)
+    -- Buat drag area transparan untuk lebih mudah di-drag
+    local DragArea = Instance.new("Frame", HeaderBar)
+    DragArea.Size = UDim2.new(1, -70, 1, 0)
+    DragArea.BackgroundTransparency = 1
+    DragArea.BorderSizePixel = 0
+    DragArea.ZIndex = 1
+
+    DragArea.InputBegan:Connect(function(input, gameProcessed)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = UserInputService:GetMouseLocation()
@@ -182,7 +188,7 @@ function Library:Init(hubName)
 
             -- Hover Effect
             Btn.MouseEnter:Connect(function()
-                Btn.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+                Btn.BackgroundColor3 = Color3.fromRGB(180, 120, 255)
             end)
             Btn.MouseLeave:Connect(function()
                 Btn.BackgroundColor3 = Theme.Accent
@@ -222,44 +228,8 @@ function Library:Init(hubName)
     return Elements
 end
 
--- [[ 3. LOGIKA SISTEM (LOGIC) ]] --
-local Logic = {}
+-- [[ 3. EKSEKUSI ]] --
+local UI = Library:Init("🔮 ARISE CROSSOVER HUB")
 
-function Logic:SetSpeed(s)
-    local char = game.Players.LocalPlayer.Character
-    if char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.WalkSpeed = s
-    end
-end
-
--- [[ 4. EKSEKUSI ]] --
-local UI = Library:Init("OXYGEN-U HUB")
-
--- Section 1: General
-local General = UI:AddSection("⚙️ General")
-General:AddButton("Speed 100", function()
-    Logic:SetSpeed(100)
-end)
-General:AddButton("Speed 50", function()
-    Logic:SetSpeed(50)
-end)
-General:AddButton("Reset Speed", function()
-    Logic:SetSpeed(16)
-end)
-
--- Section 2: ScriptBlox
-local ScriptBox = UI:AddSection("📚 ScriptBlox")
-ScriptBox:AddButton("Blox Fruits", function()
-    print("Loading Blox Fruits Script...")
-end)
-ScriptBox:AddButton("Anime Fighting", function()
-    print("Loading Anime Fighting Script...")
-end)
-
--- Section 3: Settings
-local Settings = UI:AddSection("⚙️ Settings")
-Settings:AddButton("Toggle Visibility", function()
-    print("Toggle visibility feature")
-end)
-
-print("Berhasil memuat Script Terpadu!")
+print("✓ Arise Crossover Hub Loaded!")
+print("UI ready - tambahkan section dan button sesuai kebutuhan")
