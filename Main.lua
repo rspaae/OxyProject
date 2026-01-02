@@ -9,12 +9,12 @@ local speed = 200
 
 -- UI SETUP
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "DungeonMultiHub"
+ScreenGui.Name = "DungeonScrollHub"
 
--- Hamburger Button
+-- Hamburger Button (Buka Menu)
 local OpenBtn = Instance.new("TextButton", ScreenGui)
-OpenBtn.Size = UDim2.new(0, 40, 0, 40)
-OpenBtn.Position = UDim2.new(0, 10, 0.5, -20)
+OpenBtn.Size = UDim2.new(0, 45, 0, 45)
+OpenBtn.Position = UDim2.new(0, 10, 0.5, -22)
 OpenBtn.Text = "☰"
 OpenBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 OpenBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -25,43 +25,69 @@ local MainFrame = Instance.new("Frame", ScreenGui)
 MainFrame.Size = UDim2.new(0, 220, 0, 180)
 MainFrame.Position = UDim2.new(0.5, -110, 0.4, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainFrame.BorderSizePixel = 2
 MainFrame.Active = true
 MainFrame.Draggable = true
 
--- Header Buttons
+-- Header
+local Header = Instance.new("TextLabel", MainFrame)
+Header.Size = UDim2.new(1, 0, 0, 35)
+Header.Text = "DUNGEON SCROLL"
+Header.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Header.TextColor3 = Color3.new(1, 1, 1)
+Header.Font = Enum.Font.SourceSansBold
+
+-- Minimize & Close
 local MiniBtn = Instance.new("TextButton", MainFrame)
 MiniBtn.Size = UDim2.new(0, 30, 0, 30)
-MiniBtn.Position = UDim2.new(1, -60, 0, 0)
+MiniBtn.Position = UDim2.new(1, -65, 0, 2)
 MiniBtn.Text = "_"
-MiniBtn.TextColor3 = Color3.new(1, 1, 1)
 MiniBtn.BackgroundTransparency = 1
+MiniBtn.TextColor3 = Color3.new(1, 1, 1)
 
 local CloseBtn = Instance.new("TextButton", MainFrame)
 CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -30, 0, 0)
+CloseBtn.Position = UDim2.new(1, -32, 0, 2)
 CloseBtn.Text = "X"
-CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-CloseBtn.TextColor3 = Color3.new(1, 1, 1)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 
--- Fitur 1: Search Dungeon Button
-local SearchBtn = Instance.new("TextButton", MainFrame)
-SearchBtn.Size = UDim2.new(0, 200, 0, 45)
-SearchBtn.Position = UDim2.new(0, 10, 0, 45)
+-- SCROLLING FRAME (Tempat Tombol)
+local ScrollFrame = Instance.new("ScrollingFrame", MainFrame)
+ScrollFrame.Size = UDim2.new(1, 0, 1, -35)
+ScrollFrame.Position = UDim2.new(0, 0, 0, 35)
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 1.5, 0) -- Bisa di-scroll ke bawah
+ScrollFrame.ScrollBarThickness = 5
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.PaddingLeft =组件 = UDim.new(0, 10)
+
+local UIList = Instance.new("UIListLayout", ScrollFrame)
+UIList.Padding = UDim.new(0, 10)
+UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Spacer atas agar tidak terlalu mepet header
+local Spacer = Instance.new("Frame", ScrollFrame)
+Spacer.Size = UDim2.new(1, 0, 0, 5)
+Spacer.BackgroundTransparency = 1
+
+-- Fitur 1: Search Dungeon
+local SearchBtn = Instance.new("TextButton", ScrollFrame)
+SearchBtn.Size = UDim2.new(0, 180, 0, 45)
 SearchBtn.Text = "Search Dungeon: OFF"
-SearchBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+SearchBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 SearchBtn.TextColor3 = Color3.new(1, 1, 1)
 SearchBtn.Font = Enum.Font.SourceSansBold
 
--- Fitur 2: Auto Farm Button
-local FarmBtn = Instance.new("TextButton", MainFrame)
-FarmBtn.Size = UDim2.new(0, 200, 0, 45)
-FarmBtn.Position = UDim2.new(0, 10, 0, 100)
+-- Fitur 2: Auto Farm
+local FarmBtn = Instance.new("TextButton", ScrollFrame)
+FarmBtn.Size = UDim2.new(0, 180, 0, 45)
 FarmBtn.Text = "Auto Farm NPC: OFF"
-FarmBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+FarmBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 FarmBtn.TextColor3 = Color3.new(1, 1, 1)
 FarmBtn.Font = Enum.Font.SourceSansBold
 
--- FUNCTIONS
+-- FUNCTIONS (Click, Find NPC, Find Portal)
 local function clickByText(txt)
     local pGui = player:WaitForChild("PlayerGui")
     for _, v in pairs(pGui:GetDescendants()) do
@@ -97,14 +123,13 @@ local function getPortal()
     return nil
 end
 
--- LOGIC LOOPS
+-- MAIN LOGIC
 task.spawn(function()
     while true do
-        if searchDungeonActive and not autoFarmActive then
+        if searchDungeonActive then
             local p = getPortal()
             if p then
-                local d = (root.Position - p.Position).Magnitude
-                local t = TweenService:Create(root, TweenInfo.new(d/speed, Enum.EasingStyle.Linear), {CFrame = p.CFrame})
+                local t = TweenService:Create(root, TweenInfo.new((root.Position - p.Position).Magnitude/speed, Enum.EasingStyle.Linear), {CFrame = p.CFrame})
                 t:Play() t.Completed:Wait()
                 task.wait(0.5)
                 if clickByText("Create") then
@@ -114,14 +139,12 @@ task.spawn(function()
         elseif autoFarmActive then
             local npc = getClosestNPC()
             if npc then
-                local d = (root.Position - npc.Position).Magnitude
-                local t = TweenService:Create(root, TweenInfo.new(d/speed, Enum.EasingStyle.Linear), {CFrame = npc.CFrame * CFrame.new(0,0,3)})
+                local t = TweenService:Create(root, TweenInfo.new((root.Position - npc.Position).Magnitude/speed, Enum.EasingStyle.Linear), {CFrame = npc.CFrame * CFrame.new(0,0,3)})
                 t:Play() t.Completed:Wait()
             else
                 local p = getPortal()
                 if p then
-                    local d = (root.Position - p.Position).Magnitude
-                    local t = TweenService:Create(root, TweenInfo.new(d/speed, Enum.EasingStyle.Linear), {CFrame = p.CFrame})
+                    local t = TweenService:Create(root, TweenInfo.new((root.Position - p.Position).Magnitude/speed, Enum.EasingStyle.Linear), {CFrame = p.CFrame})
                     t:Play() t.Completed:Wait()
                     task.wait(0.5)
                     if clickByText("Create") then
@@ -134,25 +157,26 @@ task.spawn(function()
     end
 end)
 
--- UI EVENTS
+-- TOGGLES
 SearchBtn.MouseButton1Click:Connect(function()
     searchDungeonActive = not searchDungeonActive
-    autoFarmActive = false -- Matikan farm kalau search nyala
-    SearchBtn.Text = searchDungeonActive and "Search Dungeon: ON" or "Search Dungeon: OFF"
-    SearchBtn.BackgroundColor3 = searchDungeonActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(80, 80, 80)
-    FarmBtn.Text = "Auto Farm NPC: OFF"
-    FarmBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    autoFarmActive = false
+    SearchBtn.Text = searchDungeonActive and "Search: ON" or "Search: OFF"
+    SearchBtn.BackgroundColor3 = searchDungeonActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
+    FarmBtn.Text = "Auto Farm: OFF"
+    FarmBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 end)
 
 FarmBtn.MouseButton1Click:Connect(function()
     autoFarmActive = not autoFarmActive
-    searchDungeonActive = false -- Matikan search kalau farm nyala
-    FarmBtn.Text = autoFarmActive and "Auto Farm NPC: ON" or "Auto Farm NPC: OFF"
-    FarmBtn.BackgroundColor3 = autoFarmActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(80, 80, 80)
-    SearchBtn.Text = "Search Dungeon: OFF"
-    SearchBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    searchDungeonActive = false
+    FarmBtn.Text = autoFarmActive and "Farm: ON" or "Farm: OFF"
+    FarmBtn.BackgroundColor3 = autoFarmActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
+    SearchBtn.Text = "Search: OFF"
+    SearchBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 end)
 
+-- UI CONTROLS
 MiniBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false OpenBtn.Visible = true end)
 OpenBtn.MouseButton1Click:Connect(function() MainFrame.Visible = true OpenBtn.Visible = false end)
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
