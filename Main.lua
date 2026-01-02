@@ -8,42 +8,39 @@ getgenv().autoDungeon = false
 getgenv().autoFarm = false
 getgenv().speed = 200
 
--- 1. FUNGSI REMOTE ENTRY (DARI SCRIPT PRO)
--- Ini akan langsung masuk dungeon tanpa perlu klik tombol UI
-local function RemoteDungeonEntry()
-    -- Perintah Create
-    Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "Create"}, [2] = "\n"})
-    task.wait(0.3)
-    -- Perintah Start (Dungeon ID 1)
-    Remote:FireServer({[1] = {["Dungeon"] = 1, ["Event"] = "DungeonAction", ["Action"] = "Start"}, [2] = "\n"})
-end
-
--- 2. FUNGSI SERANG (REMOTE PUNCH)
-local function RemoteAttack(enemyName)
-    local args = {[1] = {[1] = {["Event"] = "PunchAttack", ["Enemy"] = enemyName}, [2] = "\4"}}
-    Remote:FireServer(unpack(args))
-end
-
--- 3. FUNGSI GERAK (TWEEN)
+-- FUNGSI GERAK (TWEEN)
 local function tweenTo(targetCFrame)
     local dist = (root.Position - targetCFrame.Position).Magnitude
+    if dist < 2 then return end -- Sudah sampai
     local info = TweenInfo.new(dist / getgenv().speed, Enum.EasingStyle.Linear)
     local tween = game:GetService("TweenService"):Create(root, info, {CFrame = targetCFrame})
     tween:Play()
 end
 
+-- FUNGSI MASUK DUNGEON (LOGIKA REMOTE SCRIPT PRO)
+local function InstantEnter()
+    -- Mengirim perintah untuk memicu Dialog/UI muncul di server
+    Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "TestEnter"}, [2] = "\n"})
+    task.wait(0.5)
+    -- Membuat Dungeon
+    Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "Create"}, [2] = "\n"})
+    task.wait(0.5)
+    -- Memulai Dungeon (ID 1)
+    Remote:FireServer({[1] = {["Dungeon"] = 1, ["Event"] = "DungeonAction", ["Action"] = "Start"}, [2] = "\n"})
+end
+
 -- UI POLOS RINGAN
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 180, 0, 130)
-Main.Position = UDim2.new(0.5, -90, 0.4, 0)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Main.Size = UDim2.new(0, 200, 0, 140)
+Main.Position = UDim2.new(0.5, -100, 0.4, 0)
+Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Main.Active = true
 Main.Draggable = true
 
 local function CreateBtn(name, pos, callback)
     local btn = Instance.new("TextButton", Main)
-    btn.Size = UDim2.new(0, 160, 0, 40)
+    btn.Size = UDim2.new(0, 180, 0, 45)
     btn.Position = pos
     btn.Text = name
     btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -52,52 +49,56 @@ local function CreateBtn(name, pos, callback)
     return btn
 end
 
-local btnDungeon = CreateBtn("AUTO DUNGEON: OFF", UDim2.new(0, 10, 0, 20), function()
-    getgenv().autoDungeon = not getgenv().autoDungeon
-end)
+local b1 = CreateBtn("AUTO DUNGEON: OFF", UDim2.new(0, 10, 0, 15), function() getgenv().autoDungeon = not getgenv().autoDungeon end)
+local b2 = CreateBtn("AUTO FARM: OFF", UDim2.new(0, 10, 0, 75), function() getgenv().autoFarm = not getgenv().autoFarm end)
 
-local btnFarm = CreateBtn("AUTO FARM: OFF", UDim2.new(0, 10, 0, 70), function()
-    getgenv().autoFarm = not getgenv().autoFarm
-end)
-
--- MAIN LOOP (LOGIKA GABUNGAN)
+-- MAIN LOOP
 task.spawn(function()
-    while task.wait(0.2) do
-        -- Update UI Text
-        btnDungeon.Text = getgenv().autoDungeon and "DUNGEON: ON" or "DUNGEON: OFF"
-        btnDungeon.BackgroundColor3 = getgenv().autoDungeon and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(50, 50, 50)
-        btnFarm.Text = getgenv().autoFarm and "FARM: ON" or "FARM: OFF"
-        btnFarm.BackgroundColor3 = getgenv().autoFarm and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(50, 50, 50)
+    while task.wait(0.5) do
+        -- Update Tampilan Tombol
+        b1.Text = getgenv().autoDungeon and "DUNGEON: ON" or "AUTO DUNGEON: OFF"
+        b1.BackgroundColor3 = getgenv().autoDungeon and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
+        b2.Text = getgenv().autoFarm and "FARM: ON" or "AUTO FARM: OFF"
+        b2.BackgroundColor3 = getgenv().autoFarm and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
 
-        -- LOGIKA AUTO MASUK & CARI PORTAL
+        -- LOGIKA DUNGEON
         if getgenv().autoDungeon then
-            RemoteDungeonEntry() -- Panggil fungsi Remote Pro
+            -- 1. Cari Portal di Folder __Main.__World
+            local portal = workspace:FindFirstChild("__Main") and workspace.__Main:FindFirstChild("__World") and workspace.__Main.__World:FindFirstChild("Dungeon")
             
-            -- Cari portal terdekat untuk mendekat (opsional agar tidak dikira cheat diam)
-            for _, v in pairs(workspace:GetDescendants()) do
-                if v:IsA("BasePart") and v.Name:lower():find("portal") then
-                    tweenTo(v.CFrame)
-                    break
+            -- Jika tidak ada di folder khusus, cari manual di Workspace
+            if not portal then
+                for _, v in pairs(workspace:GetDescendants()) do
+                    if v:IsA("BasePart") and v.Name:lower():find("portal") then
+                        portal = v break
+                    end
+                end
+            end
+
+            if portal then
+                local dist = (root.Position - portal.Position).Magnitude
+                if dist > 10 then
+                    tweenTo(portal.CFrame) -- Terbang ke portal
+                else
+                    -- Jika sudah sampai (dist < 10), jalankan fungsi masuk
+                    InstantEnter()
                 end
             end
         end
 
-        -- LOGIKA PEMBANTAI NPC (FOLDER CLIENT)
+        -- LOGIKA FARM (HANYA JALAN JIKA ADA MUSUH)
         if getgenv().autoFarm then
-            local enemyFolder = workspace:FindFirstChild("__Main") and workspace.__Main.__Enemies:FindFirstChild("Client")
-            if enemyFolder then
-                local target, minDist = nil, math.huge
+            local enemyFolder = workspace:FindFirstChild("__Main") and workspace.__Main:FindFirstChild("__Enemies") and workspace.__Main.__Enemies:FindFirstChild("Client")
+            if enemyFolder and #enemyFolder:GetChildren() > 0 then
                 for _, v in pairs(enemyFolder:GetChildren()) do
+                    local hrp = v:FindFirstChild("HumanoidRootPart")
                     local hp = v:FindFirstChild("HealthBar") and v.HealthBar.Main.Bar.Amount
-                    if hp and hp.ContentText ~= "0 HP" and v:FindFirstChild("HumanoidRootPart") then
-                        local d = (root.Position - v.HumanoidRootPart.Position).Magnitude
-                        if d < minDist then minDist = d target = v end
+                    if hrp and hp and hp.ContentText ~= "0 HP" then
+                        tweenTo(hrp.CFrame * CFrame.new(0, 0, 5))
+                        -- Serang sesuai script pro (\4)
+                        Remote:FireServer({[1] = {[1] = {["Event"] = "PunchAttack", ["Enemy"] = v.Name}, [2] = "\4"}})
+                        break
                     end
-                end
-                
-                if target then
-                    tweenTo(target.HumanoidRootPart.CFrame * CFrame.new(0, 0, 4))
-                    RemoteAttack(target.Name)
                 end
             end
         end
