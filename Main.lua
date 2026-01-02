@@ -18,42 +18,35 @@ local Library = {}
 
 function Library:Init(hubName)
     local CoreGui = game:GetService("CoreGui")
+    local UserInputService = game:GetService("UserInputService")
     
-    -- Anti-Duplikasi (Hapus GUI lama jika ada)
+    -- Anti-Duplikasi
     if CoreGui:FindFirstChild("MyOxygenHub") then
         CoreGui.MyOxygenHub:Destroy()
     end
 
     local Screen = Instance.new("ScreenGui", CoreGui)
     Screen.Name = "MyOxygenHub"
+    Screen.ResetOnSpawn = false
 
     -- Frame Utama
     local MainFrame = Instance.new("Frame", Screen)
-    MainFrame.Size = UDim2.new(0, 450, 0, 300)
-    MainFrame.Position = UDim2.new(0.5, -225, 0.5, -150)
+    MainFrame.Size = UDim2.new(0, 500, 0, 350)
+    MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
     MainFrame.BackgroundColor3 = Theme.Main
     MainFrame.BorderSizePixel = 0
     Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
-    -- Header Bar untuk Drag & Tombol
+    -- Header Bar
     local HeaderBar = Instance.new("Frame", MainFrame)
     HeaderBar.Size = UDim2.new(1, 0, 0, 35)
     HeaderBar.BackgroundColor3 = Theme.Sidebar
     HeaderBar.BorderSizePixel = 0
     Instance.new("UICorner", HeaderBar).CornerRadius = UDim.new(0, 8)
 
-    -- Drag Area (Blok sejajar untuk drag)
-    local DragArea = Instance.new("TextButton", HeaderBar)
-    DragArea.Size = UDim2.new(1, -70, 1, 0)
-    DragArea.Position = UDim2.new(0, 0, 0, 0)
-    DragArea.BackgroundColor3 = Theme.Sidebar
-    DragArea.TextTransparency = 1
-    DragArea.BorderSizePixel = 0
-    DragArea.AutoButtonColor = false
-
-    -- Judul di Header
-    local HeaderTitle = Instance.new("TextLabel", DragArea)
-    HeaderTitle.Size = UDim2.new(1, 0, 1, 0)
+    -- Judul Header
+    local HeaderTitle = Instance.new("TextLabel", HeaderBar)
+    HeaderTitle.Size = UDim2.new(1, -70, 1, 0)
     HeaderTitle.Text = hubName
     HeaderTitle.TextColor3 = Theme.Accent
     HeaderTitle.BackgroundTransparency = 1
@@ -72,6 +65,7 @@ function Library:Init(hubName)
     MinimizeBtn.Font = Enum.Font.GothamBold
     MinimizeBtn.TextSize = 18
     MinimizeBtn.BorderSizePixel = 0
+    MinimizeBtn.AutoButtonColor = false
     Instance.new("UICorner", MinimizeBtn).CornerRadius = UDim.new(0, 4)
 
     -- Tombol Close
@@ -84,39 +78,28 @@ function Library:Init(hubName)
     CloseBtn.Font = Enum.Font.GothamBold
     CloseBtn.TextSize = 16
     CloseBtn.BorderSizePixel = 0
+    CloseBtn.AutoButtonColor = false
     Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 4)
 
-    -- Minimize Logic
-    local isMinimized = false
-    local originalSize = MainFrame.Size
-    MinimizeBtn.MouseButton1Click:Connect(function()
-        isMinimized = not isMinimized
-        if isMinimized then
-            MainFrame.Size = UDim2.new(0, 450, 0, 35)
-            MinimizeBtn.Text = "+"
-            Container.Visible = false
-            Sidebar.Visible = false
-        else
-            MainFrame.Size = originalSize
-            MinimizeBtn.Text = "−"
-            Container.Visible = true
-            Sidebar.Visible = true
-        end
-    end)
+    -- Content Area (Halaman Tunggal)
+    local ContentArea = Instance.new("ScrollingFrame", MainFrame)
+    ContentArea.Size = UDim2.new(1, 0, 1, -35)
+    ContentArea.Position = UDim2.new(0, 0, 0, 35)
+    ContentArea.BackgroundColor3 = Theme.Main
+    ContentArea.BorderSizePixel = 0
+    ContentArea.ScrollBarThickness = 5
+    ContentArea.CanvasSize = UDim2.new(1, 0, 0, 0)
 
-    -- Close Logic
-    CloseBtn.MouseButton1Click:Connect(function()
-        Screen:Destroy()
-    end)
+    local Layout = Instance.new("UIListLayout", ContentArea)
+    Layout.Padding = UDim.new(0, 10)
+    Layout.SortOrder = Enum.SortOrder.LayoutOrder
 
     -- Drag Logic
-    local UserInputService = game:GetService("UserInputService")
     local dragging = false
     local dragStart = Vector2.new(0, 0)
     local frameStart = UDim2.new(0, 0, 0, 0)
 
-    DragArea.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
+    HeaderBar.InputBegan:Connect(function(input, gameProcessed)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = UserInputService:GetMouseLocation()
@@ -138,63 +121,102 @@ function Library:Init(hubName)
         end
     end)
 
-    -- Sidebar
-    local Sidebar = Instance.new("Frame", MainFrame)
-    Sidebar.Size = UDim2.new(0, 120, 1, -35)
-    Sidebar.Position = UDim2.new(0, 0, 0, 35)
-    Sidebar.BackgroundColor3 = Theme.Sidebar
-    Sidebar.BorderSizePixel = 0
-    local SideCorner = Instance.new("UICorner", Sidebar)
-    
-    -- Kontainer Halaman
-    local Container = Instance.new("Frame", MainFrame)
-    Container.Size = UDim2.new(1, -130, 1, -45)
-    Container.Position = UDim2.new(0, 125, 0, 40)
-    Container.BackgroundTransparency = 1
+    -- Minimize Logic
+    local isMinimized = false
+    local originalSize = MainFrame.Size
+    MinimizeBtn.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        if isMinimized then
+            MainFrame.Size = UDim2.new(0, 500, 0, 35)
+            MinimizeBtn.Text = "+"
+            ContentArea.Visible = false
+        else
+            MainFrame.Size = originalSize
+            MinimizeBtn.Text = "−"
+            ContentArea.Visible = true
+        end
+    end)
 
+    -- Close Logic
+    CloseBtn.MouseButton1Click:Connect(function()
+        Screen:Destroy()
+    end)
+
+    -- Elements untuk menambah konten
     local Elements = {}
 
-    function Elements:CreateTab(name)
-        local Page = Instance.new("ScrollingFrame", Container)
-        Page.Size = UDim2.new(1, 0, 1, 0)
-        Page.BackgroundTransparency = 1
-        Page.Visible = false
-        Page.ScrollBarThickness = 2
-        
-        local Layout = Instance.new("UIListLayout", Page)
-        Layout.Padding = UDim.new(0, 5)
+    function Elements:AddSection(title)
+        local Section = Instance.new("Frame", ContentArea)
+        Section.Size = UDim2.new(1, 0, 0, 0)
+        Section.BackgroundColor3 = Theme.Sidebar
+        Section.BorderSizePixel = 0
+        Section.LayoutOrder = #ContentArea:GetChildren()
+        Instance.new("UICorner", Section).CornerRadius = UDim.new(0, 6)
 
-        local TabBtn = Instance.new("TextButton", Sidebar)
-        TabBtn.Size = UDim2.new(0.9, 0, 0, 30)
-        TabBtn.Position = UDim2.new(0.05, 0, 0, 50) -- Perlu sistem list otomatis sebenarnya
-        TabBtn.Text = name
-        TabBtn.BackgroundColor3 = Theme.Main
-        TabBtn.TextColor3 = Theme.Text
-        TabBtn.Font = Enum.Font.Gotham
-        TabBtn.BorderSizePixel = 0
-        Instance.new("UICorner", TabBtn).CornerRadius = UDim.new(0, 4)
+        local SectionTitle = Instance.new("TextLabel", Section)
+        SectionTitle.Size = UDim2.new(1, 0, 0, 25)
+        SectionTitle.Text = title
+        SectionTitle.TextColor3 = Theme.Accent
+        SectionTitle.BackgroundTransparency = 1
+        SectionTitle.Font = Enum.Font.GothamSemibold
+        SectionTitle.TextSize = 12
 
-        TabBtn.MouseButton1Click:Connect(function()
-            for _, v in pairs(Container:GetChildren()) do
-                if v:IsA("ScrollingFrame") then v.Visible = false end
-            end
-            Page.Visible = true
-        end)
+        local SectionLayout = Instance.new("UIListLayout", Section)
+        SectionLayout.Padding = UDim.new(0, 8)
+        SectionLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-        local TabFunctions = {}
-        function TabFunctions:AddButton(text, callback)
-            local Btn = Instance.new("TextButton", Page)
+        local SectionFunctions = {}
+        function SectionFunctions:AddButton(text, callback)
+            local Btn = Instance.new("TextButton", Section)
             Btn.Size = UDim2.new(1, -10, 0, 35)
+            Btn.Position = UDim2.new(0, 5, 0, 0)
             Btn.BackgroundColor3 = Theme.Accent
             Btn.Text = text
-            Btn.TextColor3 = Theme.Text
+            Btn.TextColor3 = Theme.Main
             Btn.Font = Enum.Font.GothamSemibold
-            Instance.new("UICorner", Btn)
-            
+            Btn.TextSize = 11
+            Btn.BorderSizePixel = 0
+            Btn.AutoButtonColor = false
+            Btn.LayoutOrder = #Section:GetChildren()
+            Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 4)
+
+            -- Hover Effect
+            Btn.MouseEnter:Connect(function()
+                Btn.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+            end)
+            Btn.MouseLeave:Connect(function()
+                Btn.BackgroundColor3 = Theme.Accent
+            end)
+
             Btn.MouseButton1Click:Connect(callback)
         end
 
-        return TabFunctions
+        -- Update ukuran section
+        local function updateSectionSize()
+            local totalHeight = 35
+            for _, child in pairs(Section:GetChildren()) do
+                if child:IsA("TextButton") then
+                    totalHeight = totalHeight + 35 + 8
+                end
+            end
+            Section.Size = UDim2.new(1, -10, 0, totalHeight)
+        end
+
+        -- Update canvas size
+        local function updateCanvasSize()
+            local totalHeight = 10
+            for _, child in pairs(ContentArea:GetChildren()) do
+                if child:IsA("Frame") then
+                    totalHeight = totalHeight + child.Size.Y.Offset + 10
+                end
+            end
+            ContentArea.CanvasSize = UDim2.new(1, 0, 0, totalHeight)
+        end
+
+        game:GetService("RunService").Heartbeat:Connect(updateSectionSize)
+        game:GetService("RunService").Heartbeat:Connect(updateCanvasSize)
+
+        return SectionFunctions
     end
 
     return Elements
@@ -203,12 +225,6 @@ end
 -- [[ 3. LOGIKA SISTEM (LOGIC) ]] --
 local Logic = {}
 
-function Logic:SearchScriptBlox(q)
-    -- Simulasi koneksi API
-    print("Mencari di ScriptBlox: " .. q)
-    -- Disini nanti tempat HttpGet ke ScriptBlox
-end
-
 function Logic:SetSpeed(s)
     local char = game.Players.LocalPlayer.Character
     if char and char:FindFirstChild("Humanoid") then
@@ -216,22 +232,34 @@ function Logic:SetSpeed(s)
     end
 end
 
--- [[ 4. EKSEKUSI (MENGHUBUNGKAN GUI & LOGIKA) ]] --
+-- [[ 4. EKSEKUSI ]] --
 local UI = Library:Init("OXYGEN-U HUB")
 
--- Tab Beranda
-local Home = UI:CreateTab("General")
-Home:AddButton("Speed 100", function()
+-- Section 1: General
+local General = UI:AddSection("⚙️ General")
+General:AddButton("Speed 100", function()
     Logic:SetSpeed(100)
 end)
-Home:AddButton("Reset Speed", function()
+General:AddButton("Speed 50", function()
+    Logic:SetSpeed(50)
+end)
+General:AddButton("Reset Speed", function()
     Logic:SetSpeed(16)
 end)
 
--- Tab ScriptBlox
-local ScriptBox = UI:CreateTab("ScriptBlox")
-ScriptBox:AddButton("Cari Blox Fruits", function()
-    Logic:SearchScriptBlox("Blox Fruits")
+-- Section 2: ScriptBlox
+local ScriptBox = UI:AddSection("📚 ScriptBlox")
+ScriptBox:AddButton("Blox Fruits", function()
+    print("Loading Blox Fruits Script...")
+end)
+ScriptBox:AddButton("Anime Fighting", function()
+    print("Loading Anime Fighting Script...")
+end)
+
+-- Section 3: Settings
+local Settings = UI:AddSection("⚙️ Settings")
+Settings:AddButton("Toggle Visibility", function()
+    print("Toggle visibility feature")
 end)
 
 print("Berhasil memuat Script Terpadu!")
