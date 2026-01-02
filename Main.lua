@@ -9,85 +9,76 @@ local speed = 200
 
 -- UI SETUP
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "DungeonScrollHub"
+ScreenGui.Name = "DungeonWideHub"
 
--- Hamburger Button (Buka Menu)
+-- Hamburger Button (Muncul saat di-minimize)
 local OpenBtn = Instance.new("TextButton", ScreenGui)
-OpenBtn.Size = UDim2.new(0, 45, 0, 45)
-OpenBtn.Position = UDim2.new(0, 10, 0.5, -22)
+OpenBtn.Size = UDim2.new(0, 50, 0, 50)
+OpenBtn.Position = UDim2.new(0, 15, 0.5, -25)
 OpenBtn.Text = "☰"
-OpenBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+OpenBtn.TextSize = 25
+OpenBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 OpenBtn.TextColor3 = Color3.new(1, 1, 1)
-OpenBtn.Visible = false
+OpenBtn.Visible = false -- Sembunyi saat menu utama terbuka
 
--- Main Frame
+-- Main Frame (DIPERLEBAR)
 local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 220, 0, 180)
-MainFrame.Position = UDim2.new(0.5, -110, 0.4, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-MainFrame.BorderSizePixel = 2
+MainFrame.Size = UDim2.new(0, 280, 0, 180) -- Ukuran lebar 280 agar lega
+MainFrame.Position = UDim2.new(0.5, -140, 0.4, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 
--- Header
+-- Header Title
 local Header = Instance.new("TextLabel", MainFrame)
-Header.Size = UDim2.new(1, 0, 0, 35)
-Header.Text = "DUNGEON SCROLL"
-Header.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Header.Size = UDim2.new(1, 0, 0, 40)
+Header.Text = "  DUNGEON AUTO FARM"
+Header.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Header.TextColor3 = Color3.new(1, 1, 1)
+Header.TextXAlignment = Enum.TextXAlignment.Left
 Header.Font = Enum.Font.SourceSansBold
+Header.TextSize = 18
 
--- Minimize & Close
+-- Minimize Button (_)
 local MiniBtn = Instance.new("TextButton", MainFrame)
-MiniBtn.Size = UDim2.new(0, 30, 0, 30)
-MiniBtn.Position = UDim2.new(1, -65, 0, 2)
+MiniBtn.Size = UDim2.new(0, 35, 0, 35)
+MiniBtn.Position = UDim2.new(1, -75, 0, 2)
 MiniBtn.Text = "_"
+MiniBtn.TextSize = 20
 MiniBtn.BackgroundTransparency = 1
 MiniBtn.TextColor3 = Color3.new(1, 1, 1)
 
+-- Close Button (X)
 local CloseBtn = Instance.new("TextButton", MainFrame)
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -32, 0, 2)
+CloseBtn.Size = UDim2.new(0, 35, 0, 35)
+CloseBtn.Position = UDim2.new(1, -35, 0, 2)
 CloseBtn.Text = "X"
+CloseBtn.TextSize = 20
 CloseBtn.BackgroundTransparency = 1
-CloseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
 
--- SCROLLING FRAME (Tempat Tombol)
-local ScrollFrame = Instance.new("ScrollingFrame", MainFrame)
-ScrollFrame.Size = UDim2.new(1, 0, 1, -35)
-ScrollFrame.Position = UDim2.new(0, 0, 0, 35)
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 1.5, 0) -- Bisa di-scroll ke bawah
-ScrollFrame.ScrollBarThickness = 5
-ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.PaddingLeft =组件 = UDim.new(0, 10)
-
-local UIList = Instance.new("UIListLayout", ScrollFrame)
-UIList.Padding = UDim.new(0, 10)
-UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-UIList.SortOrder = Enum.SortOrder.LayoutOrder
-
--- Spacer atas agar tidak terlalu mepet header
-local Spacer = Instance.new("Frame", ScrollFrame)
-Spacer.Size = UDim2.new(1, 0, 0, 5)
-Spacer.BackgroundTransparency = 1
-
--- Fitur 1: Search Dungeon
-local SearchBtn = Instance.new("TextButton", ScrollFrame)
-SearchBtn.Size = UDim2.new(0, 180, 0, 45)
-SearchBtn.Text = "Search Dungeon: OFF"
+-- Tombol Fitur 1: Search Dungeon
+local SearchBtn = Instance.new("TextButton", MainFrame)
+SearchBtn.Size = UDim2.new(0, 250, 0, 45)
+SearchBtn.Position = UDim2.new(0, 15, 0, 55)
+SearchBtn.Text = "SEARCH DUNGEON: OFF"
 SearchBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 SearchBtn.TextColor3 = Color3.new(1, 1, 1)
 SearchBtn.Font = Enum.Font.SourceSansBold
+SearchBtn.TextSize = 16
 
--- Fitur 2: Auto Farm
-local FarmBtn = Instance.new("TextButton", ScrollFrame)
-FarmBtn.Size = UDim2.new(0, 180, 0, 45)
-FarmBtn.Text = "Auto Farm NPC: OFF"
+-- Tombol Fitur 2: Auto Farm NPC
+local FarmBtn = Instance.new("TextButton", MainFrame)
+FarmBtn.Size = UDim2.new(0, 250, 0, 45)
+FarmBtn.Position = UDim2.new(0, 15, 0, 115)
+FarmBtn.Text = "AUTO FARM NPC: OFF"
 FarmBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 FarmBtn.TextColor3 = Color3.new(1, 1, 1)
 FarmBtn.Font = Enum.Font.SourceSansBold
+FarmBtn.TextSize = 16
 
--- FUNCTIONS (Click, Find NPC, Find Portal)
+-- FUNCTIONS (Click & Detection)
 local function clickByText(txt)
     local pGui = player:WaitForChild("PlayerGui")
     for _, v in pairs(pGui:GetDescendants()) do
@@ -123,7 +114,7 @@ local function getPortal()
     return nil
 end
 
--- MAIN LOGIC
+-- LOGIC LOOP
 task.spawn(function()
     while true do
         if searchDungeonActive then
@@ -157,26 +148,25 @@ task.spawn(function()
     end
 end)
 
--- TOGGLES
+-- UI EVENTS (Minimize/Close/Toggles)
+MiniBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false OpenBtn.Visible = true end)
+OpenBtn.MouseButton1Click:Connect(function() MainFrame.Visible = true OpenBtn.Visible = false end)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
 SearchBtn.MouseButton1Click:Connect(function()
     searchDungeonActive = not searchDungeonActive
     autoFarmActive = false
-    SearchBtn.Text = searchDungeonActive and "Search: ON" or "Search: OFF"
-    SearchBtn.BackgroundColor3 = searchDungeonActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
-    FarmBtn.Text = "Auto Farm: OFF"
+    SearchBtn.Text = searchDungeonActive and "SEARCH: ON" or "SEARCH: OFF"
+    SearchBtn.BackgroundColor3 = searchDungeonActive and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+    FarmBtn.Text = "AUTO FARM: OFF"
     FarmBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 end)
 
 FarmBtn.MouseButton1Click:Connect(function()
     autoFarmActive = not autoFarmActive
     searchDungeonActive = false
-    FarmBtn.Text = autoFarmActive and "Farm: ON" or "Farm: OFF"
-    FarmBtn.BackgroundColor3 = autoFarmActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
-    SearchBtn.Text = "Search: OFF"
+    FarmBtn.Text = autoFarmActive and "FARM: ON" or "FARM: OFF"
+    FarmBtn.BackgroundColor3 = autoFarmActive and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+    SearchBtn.Text = "SEARCH: OFF"
     SearchBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 end)
-
--- UI CONTROLS
-MiniBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false OpenBtn.Visible = true end)
-OpenBtn.MouseButton1Click:Connect(function() MainFrame.Visible = true OpenBtn.Visible = false end)
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
