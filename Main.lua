@@ -1,91 +1,93 @@
 -- SETTINGS
 local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local root = character:WaitForChild("HumanoidRootPart")
+local char = player.Character or player.CharacterAdded:Wait()
+local root = char:WaitForChild("HumanoidRootPart")
+local hum = char:WaitForChild("Humanoid")
+local VirtualUser = game:GetService("VirtualUser")
 
--- UI SETUP
+local autoFarmActive = false
+local speed = 200
+
+-- UI SIMPLE & LEBAR
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 320, 0, 280)
-MainFrame.Position = UDim2.new(0.5, -160, 0.4, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.Draggable = true
-MainFrame.Active = true
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 280, 0, 150)
+Main.Position = UDim2.new(0.5, -140, 0.4, 0)
+Main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Main.Draggable = true
+Main.Active = true
 
-local Header = Instance.new("TextLabel", MainFrame)
-Header.Size = UDim2.new(1, 0, 0, 40)
-Header.Text = "  ARISE OBJECT SPY (ADVANCED)"
-Header.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-Header.TextColor3 = Color3.new(1, 1, 1)
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Text = "ARISE MULTI-TARGET FARM"
+Title.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Title.TextColor3 = Color3.new(1, 1, 1)
 
--- DISPLAY INFO
-local InfoBox = Instance.new("TextLabel", MainFrame)
-InfoBox.Size = UDim2.new(1, -20, 0, 100)
-InfoBox.Position = UDim2.new(0, 10, 0, 45)
-InfoBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-InfoBox.Text = "Mencari Nama NPC & Portal..."
-InfoBox.TextColor3 = Color3.fromRGB(0, 255, 0)
-InfoBox.TextSize = 14
-InfoBox.TextWrapped = true
-InfoBox.TextXAlignment = Enum.TextXAlignment.Left
-InfoBox.TextYAlignment = Enum.TextYAlignment.Top
-
-local FarmBtn = Instance.new("TextButton", MainFrame)
-FarmBtn.Size = UDim2.new(0, 280, 0, 45)
-FarmBtn.Position = UDim2.new(0, 20, 0, 155)
-FarmBtn.Text = "START AUTO TEST"
+local FarmBtn = Instance.new("TextButton", Main)
+FarmBtn.Size = UDim2.new(0, 240, 0, 50)
+FarmBtn.Position = UDim2.new(0, 20, 0, 55)
+FarmBtn.Text = "AUTO FARM ALL NPC: OFF"
 FarmBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 FarmBtn.TextColor3 = Color3.new(1, 1, 1)
 
--- FUNGSI SCANNER AGRESIF
-local function scanEnvironment()
-    local npcName = "Belum Ketemu"
-    local portalName = "Belum Ketemu"
-    local closestDist = 50 -- Scan radius 50 meter
+-- FUNGSI CARI SEMUA MUSUH (TIDAK PEDULI NAMA)
+local function getClosestEnemy()
+    local target, dist = nil, math.huge
     
     for _, v in pairs(game.Workspace:GetDescendants()) do
-        -- 1. Cari NPC berdasarkan "Highlight" (Garis merah di fotomu)
-        if v:IsA("Highlight") then
-            npcName = v.Parent.Name .. " (Punya Highlight)"
-        end
-        
-        -- 2. Cari Portal berdasarkan nama yang mengandung 'Gate' atau 'Tele'
-        if v:IsA("BasePart") then
-            local n = v.Name:lower()
-            if n:find("gate") or n:find("room") or n:find("tele") or n:find("dungeon") then
-                portalName = v.Name
+        -- Logika: Cari objek yang punya 'Highlight' (Garis Merah) atau 'Humanoid'
+        -- Tapi pastikan itu bukan karakter kita sendiri
+        if (v:IsA("Highlight") or v:IsA("Humanoid")) and not v:IsDescendantOf(char) then
+            
+            local model = (v:IsA("Highlight") and v.Parent) or (v:IsA("Humanoid") and v.Parent)
+            local targetPart = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChildWhichIsA("BasePart")
+            
+            -- Cek apakah target masih hidup (jika punya humanoid)
+            local isAlive = true
+            local targetHum = model:FindFirstChildOfClass("Humanoid")
+            if targetHum and targetHum.Health <= 0 then isAlive = false end
+            
+            if targetPart and isAlive then
+                local d = (root.Position - targetPart.Position).Magnitude
+                if d < dist then
+                    dist = d
+                    target = targetPart
+                end
             end
         end
-        
-        -- 3. Cari Model terdekat yang punya Health (walau bukan Humanoid)
-        if v:IsA("NumberValue") and v.Name:lower():find("health") then
-            npcName = v.Parent.Name .. " (Health Detect)"
-        end
     end
-    
-    InfoBox.Text = "HASIL SCAN:\n\nNPC Terdeteksi: " .. npcName .. "\nPortal Terdeteksi: " .. portalName .. "\n\nDekati target agar scan lebih akurat!"
+    return target
 end
 
--- LOOP SCAN
+-- LOOP UTAMA
 task.spawn(function()
     while true do
-        scanEnvironment()
-        task.wait(1)
+        if autoFarmActive then
+            local enemy = getClosestEnemy()
+            if enemy then
+                -- Lari ke musuh terdekat
+                hum.WalkSpeed = speed
+                hum:MoveTo(enemy.Position + (root.Position - enemy.Position).Unit * 2)
+                
+                -- Klik Otomatis
+                VirtualUser:Button1Down(Vector2.new(0,0))
+                
+                -- Spam Skill (Z dan X)
+                game:GetService("VirtualInputManager"):SendKeyEvent(true, "Z", false, game)
+                game:GetService("VirtualInputManager"):SendKeyEvent(true, "X", false, game)
+            else
+                -- Jika musuh di sekitar habis, balik ke speed normal
+                hum.WalkSpeed = 16
+            end
+        else
+            hum.WalkSpeed = 16
+        end
+        task.wait(0.1)
     end
 end)
 
--- LOGIKA TEST JALAN
 FarmBtn.MouseButton1Click:Connect(function()
-    print("Testing move to object...")
-    -- Jika NPC ketemu, kita coba dekati satu kali sebagai test
-    for _, v in pairs(game.Workspace:GetDescendants()) do
-        if v.Name:find("Luryu") or v:IsA("Highlight") then
-            local target = v:IsA("Highlight") and v.Parent:FindFirstChildWhichIsA("BasePart") or v
-            if target then
-                character.Humanoid:MoveTo(target.Position)
-                FarmBtn.Text = "MOVING TO: " .. target.Name
-            end
-            break
-        end
-    end
+    autoFarmActive = not autoFarmActive
+    FarmBtn.Text = autoFarmActive and "FARMING..." or "AUTO FARM ALL NPC: OFF"
+    FarmBtn.BackgroundColor3 = autoFarmActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
 end)
