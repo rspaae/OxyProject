@@ -1,130 +1,91 @@
--- SETTINGS & VARIABLES
+-- SETTINGS
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
 local root = character:WaitForChild("HumanoidRootPart")
-local VirtualUser = game:GetService("VirtualUser")
 
-local searchDungeonActive = false
-local autoFarmActive = false
-local fastSpeed = 200
-
--- UI SETUP (WIDE UI)
+-- UI SETUP
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 300, 0, 250) -- Ukuran ditambah untuk Name Spy
-MainFrame.Position = UDim2.new(0.5, -150, 0.4, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.Size = UDim2.new(0, 320, 0, 280)
+MainFrame.Position = UDim2.new(0.5, -160, 0.4, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.Draggable = true
 MainFrame.Active = true
 
 local Header = Instance.new("TextLabel", MainFrame)
 Header.Size = UDim2.new(1, 0, 0, 40)
-Header.Text = "  ARISE HUB + NAME SPY"
-Header.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Header.Text = "  ARISE OBJECT SPY (ADVANCED)"
+Header.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 Header.TextColor3 = Color3.new(1, 1, 1)
-Header.Font = Enum.Font.SourceSansBold
 
--- NAME SPY DISPLAY (Kotak Info Nama)
-local SpyFrame = Instance.new("Frame", MainFrame)
-SpyFrame.Size = UDim2.new(0, 270, 0, 50)
-SpyFrame.Position = UDim2.new(0, 15, 0, 45)
-SpyFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+-- DISPLAY INFO
+local InfoBox = Instance.new("TextLabel", MainFrame)
+InfoBox.Size = UDim2.new(1, -20, 0, 100)
+InfoBox.Position = UDim2.new(0, 10, 0, 45)
+InfoBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+InfoBox.Text = "Mencari Nama NPC & Portal..."
+InfoBox.TextColor3 = Color3.fromRGB(0, 255, 0)
+InfoBox.TextSize = 14
+InfoBox.TextWrapped = true
+InfoBox.TextXAlignment = Enum.TextXAlignment.Left
+InfoBox.TextYAlignment = Enum.TextYAlignment.Top
 
-local SpyText = Instance.new("TextLabel", SpyFrame)
-SpyText.Size = UDim2.new(1, -10, 1, 0)
-SpyText.Position = UDim2.new(0, 5, 0, 0)
-SpyText.Text = "Scanning for targets..."
-SpyText.TextColor3 = Color3.fromRGB(0, 255, 150)
-SpyText.TextScaled = true
-SpyText.BackgroundTransparency = 1
-SpyText.Font = Enum.Font.Code
-
--- BUTTONS
 local FarmBtn = Instance.new("TextButton", MainFrame)
-FarmBtn.Size = UDim2.new(0, 270, 0, 45)
-FarmBtn.Position = UDim2.new(0, 15, 0, 105)
-FarmBtn.Text = "AUTO FARM NPC: OFF"
+FarmBtn.Size = UDim2.new(0, 280, 0, 45)
+FarmBtn.Position = UDim2.new(0, 20, 0, 155)
+FarmBtn.Text = "START AUTO TEST"
 FarmBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 FarmBtn.TextColor3 = Color3.new(1, 1, 1)
 
-local SearchBtn = Instance.new("TextButton", MainFrame)
-SearchBtn.Size = UDim2.new(0, 270, 0, 45)
-SearchBtn.Position = UDim2.new(0, 15, 0, 155)
-SearchBtn.Text = "SEARCH DUNGEON: OFF"
-SearchBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SearchBtn.TextColor3 = Color3.new(1, 1, 1)
-
--- FUNGSI DETEKSI & SPY
-local function updateSpy()
-    local closest, dist = "None", math.huge
+-- FUNGSI SCANNER AGRESIF
+local function scanEnvironment()
+    local npcName = "Belum Ketemu"
+    local portalName = "Belum Ketemu"
+    local closestDist = 50 -- Scan radius 50 meter
+    
     for _, v in pairs(game.Workspace:GetDescendants()) do
-        if v:IsA("Humanoid") and v.Parent ~= character and v.Health > 0 then
-            local p = v.Parent:FindFirstChild("HumanoidRootPart") or v.Parent:FindFirstChild("Torso")
-            if p then
-                local d = (root.Position - p.Position).Magnitude
-                if d < dist then
-                    dist = d
-                    closest = v.Parent.Name -- Ambil nama NPC
-                end
+        -- 1. Cari NPC berdasarkan "Highlight" (Garis merah di fotomu)
+        if v:IsA("Highlight") then
+            npcName = v.Parent.Name .. " (Punya Highlight)"
+        end
+        
+        -- 2. Cari Portal berdasarkan nama yang mengandung 'Gate' atau 'Tele'
+        if v:IsA("BasePart") then
+            local n = v.Name:lower()
+            if n:find("gate") or n:find("room") or n:find("tele") or n:find("dungeon") then
+                portalName = v.Name
             end
         end
-    end
-    SpyText.Text = "Closest NPC: " .. closest
-    return closest
-end
-
-local function getAnyTarget()
-    local target, dist = nil, math.huge
-    for _, v in pairs(game.Workspace:GetDescendants()) do
-        if v:IsA("Humanoid") and v.Parent ~= character and v.Health > 0 then
-            local npcPart = v.Parent:FindFirstChild("HumanoidRootPart") or v.Parent:FindFirstChild("Torso")
-            if npcPart then
-                local d = (root.Position - npcPart.Position).Magnitude
-                if d < dist then dist = d target = npcPart end
-            end
+        
+        -- 3. Cari Model terdekat yang punya Health (walau bukan Humanoid)
+        if v:IsA("NumberValue") and v.Name:lower():find("health") then
+            npcName = v.Parent.Name .. " (Health Detect)"
         end
     end
-    return target
+    
+    InfoBox.Text = "HASIL SCAN:\n\nNPC Terdeteksi: " .. npcName .. "\nPortal Terdeteksi: " .. portalName .. "\n\nDekati target agar scan lebih akurat!"
 end
 
--- LOOP UTAMA
+-- LOOP SCAN
 task.spawn(function()
     while true do
-        local currentName = updateSpy() -- Update Name Spy setiap detik
-        
-        if autoFarmActive then
-            humanoid.WalkSpeed = fastSpeed
-            local npc = getAnyTarget()
-            if npc then
-                humanoid:MoveTo(npc.Position)
-                VirtualUser:Button1Down(Vector2.new(0,0))
-            end
-        elseif searchDungeonActive then
-            humanoid.WalkSpeed = fastSpeed
-            -- Cari portal berdasarkan nama umum
-            for _, v in pairs(game.Workspace:GetDescendants()) do
-                if v:IsA("BasePart") and (v.Name:lower():find("portal") or v.Name:lower():find("dungeon")) then
-                    humanoid:MoveTo(v.Position)
-                    break
-                end
-            end
-        else
-            humanoid.WalkSpeed = 16
-        end
-        task.wait(0.2)
+        scanEnvironment()
+        task.wait(1)
     end
 end)
 
--- TOGGLES
+-- LOGIKA TEST JALAN
 FarmBtn.MouseButton1Click:Connect(function()
-    autoFarmActive = not autoFarmActive
-    FarmBtn.Text = autoFarmActive and "FARM: ON" or "FARM: OFF"
-    FarmBtn.BackgroundColor3 = autoFarmActive and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
-end)
-
-SearchBtn.MouseButton1Click:Connect(function()
-    searchDungeonActive = not searchDungeonActive
-    SearchBtn.Text = searchDungeonActive and "SEARCH: ON" or "SEARCH: OFF"
-    SearchBtn.BackgroundColor3 = searchDungeonActive and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+    print("Testing move to object...")
+    -- Jika NPC ketemu, kita coba dekati satu kali sebagai test
+    for _, v in pairs(game.Workspace:GetDescendants()) do
+        if v.Name:find("Luryu") or v:IsA("Highlight") then
+            local target = v:IsA("Highlight") and v.Parent:FindFirstChildWhichIsA("BasePart") or v
+            if target then
+                character.Humanoid:MoveTo(target.Position)
+                FarmBtn.Text = "MOVING TO: " .. target.Name
+            end
+            break
+        end
+    end
 end)
