@@ -10,23 +10,23 @@ local speed = 200
 
 -- UI SETUP
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "DungeonHub_Final"
+ScreenGui.Name = "DungeonHub_Arise_Final"
 
--- Hamburger Button (Minimize)
+-- Tombol Buka (Muncul saat di-minimize)
 local OpenBtn = Instance.new("TextButton", ScreenGui)
 OpenBtn.Size = UDim2.new(0, 50, 0, 50)
 OpenBtn.Position = UDim2.new(0, 15, 0.5, -25)
 OpenBtn.Text = "☰"
 OpenBtn.TextSize = 25
-OpenBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+OpenBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 OpenBtn.TextColor3 = Color3.new(1, 1, 1)
 OpenBtn.Visible = false
 
--- Main Frame (Wide UI)
+-- Frame Utama (UI Lebar)
 local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 280, 0, 180)
-MainFrame.Position = UDim2.new(0.5, -140, 0.4, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Size = UDim2.new(0, 300, 0, 200)
+MainFrame.Position = UDim2.new(0.5, -150, 0.4, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
@@ -34,47 +34,57 @@ MainFrame.Draggable = true
 -- Header
 local Header = Instance.new("TextLabel", MainFrame)
 Header.Size = UDim2.new(1, 0, 0, 40)
-Header.Text = "  DUNGEON AUTO V4"
-Header.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Header.Text = "  ARISE DUNGEON HUB"
+Header.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Header.TextColor3 = Color3.new(1, 1, 1)
 Header.TextXAlignment = Enum.TextXAlignment.Left
 Header.Font = Enum.Font.SourceSansBold
 
--- Minimize Button
+-- Tombol Minimize
 local MiniBtn = Instance.new("TextButton", MainFrame)
 MiniBtn.Size = UDim2.new(0, 35, 0, 35)
 MiniBtn.Position = UDim2.new(1, -75, 0, 2)
 MiniBtn.Text = "_"
 MiniBtn.BackgroundTransparency = 1
 MiniBtn.TextColor3 = Color3.new(1, 1, 1)
+MiniBtn.TextSize = 20
 
--- Close Button
+-- Tombol Close
 local CloseBtn = Instance.new("TextButton", MainFrame)
 CloseBtn.Size = UDim2.new(0, 35, 0, 35)
 CloseBtn.Position = UDim2.new(1, -35, 0, 2)
 CloseBtn.Text = "X"
 CloseBtn.BackgroundTransparency = 1
 CloseBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+CloseBtn.TextSize = 20
 
--- Fitur 1: Search Dungeon
-local SearchBtn = Instance.new("TextButton", MainFrame)
-SearchBtn.Size = UDim2.new(0, 250, 0, 45)
-SearchBtn.Position = UDim2.new(0, 15, 0, 55)
+-- Scrolling Frame
+local Scroll = Instance.new("ScrollingFrame", MainFrame)
+Scroll.Size = UDim2.new(1, 0, 1, -40)
+Scroll.Position = UDim2.new(0, 0, 0, 40)
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 220)
+Scroll.ScrollBarThickness = 6
+Scroll.BackgroundTransparency = 1
+
+-- Tombol Fitur 1: Search Dungeon
+local SearchBtn = Instance.new("TextButton", Scroll)
+SearchBtn.Size = UDim2.new(0, 260, 0, 50)
+SearchBtn.Position = UDim2.new(0, 20, 0, 15)
 SearchBtn.Text = "SEARCH DUNGEON: OFF"
-SearchBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SearchBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 SearchBtn.TextColor3 = Color3.new(1, 1, 1)
 SearchBtn.Font = Enum.Font.SourceSansBold
 
--- Fitur 2: Auto Farm NPC
-local FarmBtn = Instance.new("TextButton", MainFrame)
-FarmBtn.Size = UDim2.new(0, 250, 0, 45)
-FarmBtn.Position = UDim2.new(0, 15, 0, 115)
+-- Tombol Fitur 2: Auto Farm NPC
+local FarmBtn = Instance.new("TextButton", Scroll)
+FarmBtn.Size = UDim2.new(0, 260, 0, 50)
+FarmBtn.Position = UDim2.new(0, 20, 0, 75)
 FarmBtn.Text = "AUTO FARM NPC: OFF"
-FarmBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+FarmBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 FarmBtn.TextColor3 = Color3.new(1, 1, 1)
 FarmBtn.Font = Enum.Font.SourceSansBold
 
--- FUNCTIONS
+-- FUNGSI-FUNGSI UTAMA
 local function clickByText(txt)
     local pGui = player:WaitForChild("PlayerGui")
     for _, v in pairs(pGui:GetDescendants()) do
@@ -90,46 +100,51 @@ local function clickByText(txt)
     return false
 end
 
-local function getTarget()
-    local closest, dist = nil, math.huge
+local function getClosestNPC()
+    local target, dist = nil, math.huge
     for _, v in pairs(game.Workspace:GetDescendants()) do
         if v:IsA("Humanoid") and v.Parent ~= player.Character and v.Health > 0 then
-            local npcPart = v.Parent:FindFirstChild("HumanoidRootPart")
-            if npcPart then
-                local d = (root.Position - npcPart.Position).Magnitude
-                if d < dist then dist = d closest = npcPart end
+            local npcRoot = v.Parent:FindFirstChild("HumanoidRootPart")
+            if npcRoot then
+                local d = (root.Position - npcRoot.Position).Magnitude
+                if d < dist then dist = d target = npcRoot end
             end
         end
     end
-    return closest
+    return target
 end
 
-local function attack()
+local function autoAttack()
     VirtualUser:CaptureController()
     VirtualUser:Button1Down(Vector2.new(0,0))
+    -- Auto Skill Z & X (Simulasi tekan keyboard)
+    game:GetService("VirtualInputManager"):SendKeyEvent(true, "Z", false, game)
+    game:GetService("VirtualInputManager"):SendKeyEvent(true, "X", false, game)
 end
 
-local function getPortal()
+local function findPortal()
     for _, v in pairs(game.Workspace:GetDescendants()) do
         if string.find(string.lower(v.Name), "dungeon") and v:IsA("BasePart") then return v end
     end
     return nil
 end
 
--- MAIN LOGIC LOOP
+-- LOOP LOGIKA UTAMA
 task.spawn(function()
     while true do
         if autoFarmActive then
-            local target = getTarget()
+            local target = getClosestNPC()
             if target then
+                -- Menuju ke NPC
                 local d = (root.Position - target.Position).Magnitude
                 TweenService:Create(root, TweenInfo.new(d/speed, Enum.EasingStyle.Linear), {CFrame = target.CFrame * CFrame.new(0, 0, 3)}):Play()
-                attack()
+                autoAttack()
             else
-                local p = getPortal()
-                if p then
-                    local d = (root.Position - p.Position).Magnitude
-                    local t = TweenService:Create(root, TweenInfo.new(d/speed, Enum.EasingStyle.Linear), {CFrame = p.CFrame})
+                -- Jika NPC habis, menuju Portal
+                local portal = findPortal()
+                if portal then
+                    local d = (root.Position - portal.Position).Magnitude
+                    local t = TweenService:Create(root, TweenInfo.new(d/speed, Enum.EasingStyle.Linear), {CFrame = portal.CFrame})
                     t:Play() t.Completed:Wait()
                     task.wait(0.5)
                     if clickByText("Create") then
@@ -138,10 +153,10 @@ task.spawn(function()
                 end
             end
         elseif searchDungeonActive then
-            local p = getPortal()
-            if p then
-                local d = (root.Position - p.Position).Magnitude
-                local t = TweenService:Create(root, TweenInfo.new(d/speed, Enum.EasingStyle.Linear), {CFrame = p.CFrame})
+            local portal = findPortal()
+            if portal then
+                local d = (root.Position - portal.Position).Magnitude
+                local t = TweenService:Create(root, TweenInfo.new(d/speed, Enum.EasingStyle.Linear), {CFrame = portal.CFrame})
                 t:Play() t.Completed:Wait()
                 task.wait(0.5)
                 if clickByText("Create") then
@@ -149,11 +164,11 @@ task.spawn(function()
                 end
             end
         end
-        task.wait(0.3)
+        task.wait(0.2)
     end
 end)
 
--- UI EVENTS
+-- LOGIKA UI (MINIMIZE/CLOSE/TOGGLE)
 MiniBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false OpenBtn.Visible = true end)
 OpenBtn.MouseButton1Click:Connect(function() MainFrame.Visible = true OpenBtn.Visible = false end)
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
@@ -162,16 +177,16 @@ SearchBtn.MouseButton1Click:Connect(function()
     searchDungeonActive = not searchDungeonActive
     autoFarmActive = false
     SearchBtn.Text = searchDungeonActive and "SEARCH: ON" or "SEARCH: OFF"
-    SearchBtn.BackgroundColor3 = searchDungeonActive and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
-    FarmBtn.Text = "AUTO FARM NPC: OFF"
-    FarmBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    SearchBtn.BackgroundColor3 = searchDungeonActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
+    FarmBtn.Text = "AUTO FARM: OFF"
+    FarmBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 end)
 
 FarmBtn.MouseButton1Click:Connect(function()
     autoFarmActive = not autoFarmActive
     searchDungeonActive = false
     FarmBtn.Text = autoFarmActive and "FARM: ON" or "FARM: OFF"
-    FarmBtn.BackgroundColor3 = autoFarmActive and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
-    SearchBtn.Text = "SEARCH DUNGEON: OFF"
-    SearchBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    FarmBtn.BackgroundColor3 = autoFarmActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
+    SearchBtn.Text = "SEARCH: OFF"
+    SearchBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 end)
