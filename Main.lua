@@ -1,235 +1,331 @@
--- =========================================================
--- [ ARISE CROSSOVER HUB ]
--- =========================================================
--- Script untuk Game Arise Crossover
--- =========================================================
+local plr, char, mouse, human, torso
+repeat wait(); plr = game.Players.LocalPlayer until plr
+repeat wait(); mouse = plr:GetMouse() until mouse
+local input = game:GetService("UserInputService")
 
--- [[ 1. KONFIGURASI & THEME ]] --
-local Theme = {
-    Main = Color3.fromRGB(20, 20, 25),
-    Sidebar = Color3.fromRGB(30, 30, 35),
-    Accent = Color3.fromRGB(150, 100, 255),
-    Text = Color3.fromRGB(255, 255, 255)
-}
+local ui_toggle_fly
+local flying = false
+local flyspeed = 65
+local aimbot = false
+local aimbottarget
 
--- [[ 2. UI LIBRARY (MODUL GUI) ]] --
-local Library = {}
+--[[
+--
+-- Character
+--
+--]]
 
-function Library:Init(hubName)
-    local CoreGui = game:GetService("CoreGui")
-    local UserInputService = game:GetService("UserInputService")
-    
-    -- Anti-Duplikasi
-    if CoreGui:FindFirstChild("MyOxygenHub") then
-        CoreGui.MyOxygenHub:Destroy()
+do
+    function UpdateCharacter ()
+        char = plr.Character
+        human = char:WaitForChild("Humanoid")
+        torso = human.Torso
     end
-
-    local Screen = Instance.new("ScreenGui", CoreGui)
-    Screen.Name = "MyOxygenHub"
-    Screen.ResetOnSpawn = false
-
-    -- Frame Utama
-    local MainFrame = Instance.new("Frame", Screen)
-    MainFrame.Size = UDim2.new(0, 500, 0, 350)
-    MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
-    MainFrame.BackgroundColor3 = Theme.Main
-    MainFrame.BorderSizePixel = 0
-    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
-
-    -- Header Bar
-    local HeaderBar = Instance.new("Frame", MainFrame)
-    HeaderBar.Size = UDim2.new(1, 0, 0, 35)
-    HeaderBar.BackgroundColor3 = Theme.Sidebar
-    HeaderBar.BorderSizePixel = 0
-    Instance.new("UICorner", HeaderBar).CornerRadius = UDim.new(0, 8)
-
-    -- Judul Header
-    local HeaderTitle = Instance.new("TextLabel", HeaderBar)
-    HeaderTitle.Size = UDim2.new(1, -70, 1, 0)
-    HeaderTitle.Text = hubName
-    HeaderTitle.TextColor3 = Theme.Accent
-    HeaderTitle.BackgroundTransparency = 1
-    HeaderTitle.Font = Enum.Font.GothamBold
-    HeaderTitle.TextSize = 14
-    HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
-    HeaderTitle.Position = UDim2.new(0, 10, 0, 0)
-
-    -- Tombol Minimize
-    local MinimizeBtn = Instance.new("TextButton", HeaderBar)
-    MinimizeBtn.Size = UDim2.new(0, 30, 1, 0)
-    MinimizeBtn.Position = UDim2.new(1, -70, 0, 0)
-    MinimizeBtn.BackgroundColor3 = Theme.Accent
-    MinimizeBtn.TextColor3 = Theme.Main
-    MinimizeBtn.Text = "−"
-    MinimizeBtn.Font = Enum.Font.GothamBold
-    MinimizeBtn.TextSize = 18
-    MinimizeBtn.BorderSizePixel = 0
-    MinimizeBtn.AutoButtonColor = false
-    Instance.new("UICorner", MinimizeBtn).CornerRadius = UDim.new(0, 4)
-
-    -- Tombol Close
-    local CloseBtn = Instance.new("TextButton", HeaderBar)
-    CloseBtn.Size = UDim2.new(0, 30, 1, 0)
-    CloseBtn.Position = UDim2.new(1, -35, 0, 0)
-    CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-    CloseBtn.TextColor3 = Theme.Text
-    CloseBtn.Text = "✕"
-    CloseBtn.Font = Enum.Font.GothamBold
-    CloseBtn.TextSize = 16
-    CloseBtn.BorderSizePixel = 0
-    CloseBtn.AutoButtonColor = false
-    Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 4)
-
-    -- Content Area (Halaman Tunggal)
-    local ContentArea = Instance.new("ScrollingFrame", MainFrame)
-    ContentArea.Size = UDim2.new(1, 0, 1, -35)
-    ContentArea.Position = UDim2.new(0, 0, 0, 35)
-    ContentArea.BackgroundColor3 = Theme.Main
-    ContentArea.BorderSizePixel = 0
-    ContentArea.ScrollBarThickness = 5
-    ContentArea.CanvasSize = UDim2.new(1, 0, 0, 0)
-
-    local Layout = Instance.new("UIListLayout", ContentArea)
-    Layout.Padding = UDim.new(0, 10)
-    Layout.SortOrder = Enum.SortOrder.LayoutOrder
-
-    -- Drag Logic
-    local dragging = false
-    local dragStart = Vector2.new(0, 0)
-    local frameStart = UDim2.new(0, 0, 0, 0)
-
-    -- Buat drag area transparan untuk lebih mudah di-drag
-    local DragArea = Instance.new("Frame", HeaderBar)
-    DragArea.Size = UDim2.new(1, -70, 1, 0)
-    DragArea.BackgroundTransparency = 1
-    DragArea.BorderSizePixel = 0
-    DragArea.ZIndex = 1
-
-    DragArea.InputBegan:Connect(function(input, gameProcessed)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = UserInputService:GetMouseLocation()
-            frameStart = MainFrame.Position
-        end
+    repeat wait() until plr.Character
+    UpdateCharacter()
+    plr.CharacterAdded:Connect(UpdateCharacter)
+    plr.CharacterRemoving:Connect(function()
+        ui_toggle_fly:Set(false)
     end)
-
-    UserInputService.InputChanged:Connect(function(input, gameProcessed)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
-            local currentMouse = UserInputService:GetMouseLocation()
-            local delta = currentMouse - dragStart
-            MainFrame.Position = UDim2.new(frameStart.X.Scale, frameStart.X.Offset + delta.X, frameStart.Y.Scale, frameStart.Y.Offset + delta.Y)
-        end
-    end)
-
-    UserInputService.InputEnded:Connect(function(input, gameProcessed)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-
-    -- Minimize Logic
-    local isMinimized = false
-    local originalSize = MainFrame.Size
-    MinimizeBtn.MouseButton1Click:Connect(function()
-        isMinimized = not isMinimized
-        if isMinimized then
-            MainFrame.Size = UDim2.new(0, 500, 0, 35)
-            MinimizeBtn.Text = "+"
-            ContentArea.Visible = false
-        else
-            MainFrame.Size = originalSize
-            MinimizeBtn.Text = "−"
-            ContentArea.Visible = true
-        end
-    end)
-
-    -- Close Logic
-    CloseBtn.MouseButton1Click:Connect(function()
-        Screen:Destroy()
-    end)
-
-    -- Elements untuk menambah konten
-    local Elements = {}
-
-    function Elements:AddSection(title)
-        local Section = Instance.new("Frame", ContentArea)
-        Section.Size = UDim2.new(1, 0, 0, 0)
-        Section.BackgroundColor3 = Theme.Sidebar
-        Section.BorderSizePixel = 0
-        Section.LayoutOrder = #ContentArea:GetChildren()
-        Instance.new("UICorner", Section).CornerRadius = UDim.new(0, 6)
-
-        local SectionTitle = Instance.new("TextLabel", Section)
-        SectionTitle.Size = UDim2.new(1, 0, 0, 25)
-        SectionTitle.Text = title
-        SectionTitle.TextColor3 = Theme.Accent
-        SectionTitle.BackgroundTransparency = 1
-        SectionTitle.Font = Enum.Font.GothamSemibold
-        SectionTitle.TextSize = 12
-
-        local SectionLayout = Instance.new("UIListLayout", Section)
-        SectionLayout.Padding = UDim.new(0, 8)
-        SectionLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-        local SectionFunctions = {}
-        function SectionFunctions:AddButton(text, callback)
-            local Btn = Instance.new("TextButton", Section)
-            Btn.Size = UDim2.new(1, -10, 0, 35)
-            Btn.Position = UDim2.new(0, 5, 0, 0)
-            Btn.BackgroundColor3 = Theme.Accent
-            Btn.Text = text
-            Btn.TextColor3 = Theme.Main
-            Btn.Font = Enum.Font.GothamSemibold
-            Btn.TextSize = 11
-            Btn.BorderSizePixel = 0
-            Btn.AutoButtonColor = false
-            Btn.LayoutOrder = #Section:GetChildren()
-            Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 4)
-
-            -- Hover Effect
-            Btn.MouseEnter:Connect(function()
-                Btn.BackgroundColor3 = Color3.fromRGB(180, 120, 255)
-            end)
-            Btn.MouseLeave:Connect(function()
-                Btn.BackgroundColor3 = Theme.Accent
-            end)
-
-            Btn.MouseButton1Click:Connect(callback)
-        end
-
-        -- Update ukuran section
-        local function updateSectionSize()
-            local totalHeight = 35
-            for _, child in pairs(Section:GetChildren()) do
-                if child:IsA("TextButton") then
-                    totalHeight = totalHeight + 35 + 8
-                end
-            end
-            Section.Size = UDim2.new(1, -10, 0, totalHeight)
-        end
-
-        -- Update canvas size
-        local function updateCanvasSize()
-            local totalHeight = 10
-            for _, child in pairs(ContentArea:GetChildren()) do
-                if child:IsA("Frame") then
-                    totalHeight = totalHeight + child.Size.Y.Offset + 10
-                end
-            end
-            ContentArea.CanvasSize = UDim2.new(1, 0, 0, totalHeight)
-        end
-
-        game:GetService("RunService").Heartbeat:Connect(updateSectionSize)
-        game:GetService("RunService").Heartbeat:Connect(updateCanvasSize)
-
-        return SectionFunctions
-    end
-
-    return Elements
 end
 
--- [[ 3. EKSEKUSI ]] --
-local UI = Library:Init("🔮 ARISE CROSSOVER HUB")
+--[[
+--
+-- Properties
+--
+--]]
 
-print("✓ Arise Crossover Hub Loaded!")
-print("UI ready - tambahkan section dan button sesuai kebutuhan")
+local SetProperty
+local RestoreProperty
+do
+    --
+    -- Instance
+    -- 
+    
+    local InstanceHasProperty
+    local GetCustomInstanceProperty
+    local SetCustomInstanceProperty
+    do
+        local customprops = {}
+        
+        -- why is there no function for this, roblox?
+        InstanceHasProperty = function (obj, prop)
+            return pcall(function() return obj[prop] end) 
+        end
+        
+        GetCustomInstanceProperty = function (obj, key)
+            customprops[obj] = customprops[obj] or {}
+            return customprops[obj][key]
+        end
+        
+        SetCustomInstanceProperty = function (obj, key, value)
+            customprops[obj] = customprops[obj] or {}
+            customprops[obj][key] = value
+        end
+    end
+    
+    --
+    -- Properties
+    --
+    
+    function Get (obj, prop)
+        if type(obj) == 'table' then
+            return rawget(obj, prop)
+        elseif typeof(obj) == 'Instance' then
+            if InstanceHasProperty(obj, prop) then
+                return obj[prop]
+            end
+            return GetCustomInstanceProperty(obj, prop)
+        end
+        error(typeof(obj))
+    end
+    
+    function Set (obj, prop, value)
+        if type(obj) == 'table' then
+            rawset(obj, prop, value) 
+        elseif typeof(obj) == 'Instance' then
+            if InstanceHasProperty(obj, prop) then
+                obj[prop] = value
+            else
+                SetCustomInstanceProperty(obj, prop, value)
+            end
+        else
+            error(typeof(obj))
+        end
+    end
+    
+    local GetCached
+    local SetCached
+    do
+        function CachedProperty (prop)
+            return 'epic_cached_' .. prop
+        end
+        GetCached = function(obj, prop)        return Get(obj, CachedProperty(prop))        end
+        SetCached = function(obj, prop, value)        Set(obj, CachedProperty(prop), value) end
+    end
+    
+    RestoreProperty = function (obj, prop)
+        local cached = GetCached(obj, prop)
+        if cached then
+            Set(obj, prop, cached)
+            SetCached(obj, prop, nil)
+        end
+    end
+    
+    SetProperty = function (obj, prop, value)
+        if Get(obj, prop) then
+            if not GetCached(obj, prop) then
+                SetCached(obj, prop, Get(obj, prop))
+            end
+            Set(obj, prop, value)
+        end
+    end
+end
+
+--[[
+--
+-- Aimbot
+--
+--]]
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if aimbot then
+        local cam = game:GetService("Workspace").CurrentCamera
+        if not aimbottarget then
+            local closest
+            local mpos = Vector2.new(mouse.X, mouse.Y)
+            for _,p in pairs(game:GetService("Players"):GetChildren()) do
+                if p ~= plr and p.Character then
+                    local t = p.Character.Head
+                    local scrpos, onscr = cam:WorldToViewportPoint(t.Position)
+                    scrpos = Vector2.new(scrpos.X, scrpos.Y)
+                    if onscr and (closest==nil or (scrpos-mpos).Magnitude < (closest-mpos).Magnitude) then
+                        closest = scrpos
+                        aimbottarget = t
+                    end
+                end
+            end
+        end
+        if aimbottarget then
+            cam.CFrame = CFrame.new(cam.CFrame.Position, aimbottarget.Position)
+        end
+    else
+        aimbottarget = nil 
+    end
+end)
+
+--[[
+--
+-- UI
+--
+--]]
+
+local pepsi = loadstring(game:GetObjects("rbxassetid://7657867786")[1].Source)():CreateWindow({
+    Name = "Epic",
+    Themeable = {
+        Info = "Discord Server: VzYTJ7Y"
+    }
+})
+local general = pepsi:CreateTab({ Name="General" })
+
+--[[
+--
+-- EPIC
+--
+--]]
+
+do
+    local epic = general:CreateSection({ Name="Epic" })
+    
+    function SetAllBasepartProperties (prop, value, ifobjfunc)
+        for _,v in pairs(game.Workspace:GetDescendants()) do
+            if v:IsA("BasePart") and (ifobjfunc==nil or ifobjfunc(v)) then
+                SetProperty(v, prop, value)
+            end
+        end
+    end
+    
+    function RestoreAllBasepartProperties (prop)
+        for _,v in pairs(game.Workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                RestoreProperty(v, prop)
+            end
+        end
+    end
+    
+    epic:AddToggle({ Name="Neons", Key=true, Value=true, Callback=function(yes)
+        if yes then RestoreAllBasepartProperties("Material")
+        else SetAllBasepartProperties("Material", Enum.Material.Plastic, function(obj) return obj.Material==Enum.Material.Neon end)
+        end
+    end})
+    
+    epic:AddToggle({ Name="Moving Parts", Key=true, Value=true, Callback=function(yes)
+        if yes then RestoreAllBasepartProperties("Velocity")
+        else SetAllBasepartProperties("Velocity", Vector3.zero)
+        end
+    end})
+    
+    epic:AddSlider({ Name="Walk speed", Value=human.WalkSpeed, Min=1, Max=1000, Callback=function(v)
+        human.WalkSpeed = v
+    end})
+    
+    epic:AddToggle({ Name="Aimbot / Aimlock", Key=Enum.KeyCode.Q, Value=false, Callback=function(yes)
+        aimbot = yes
+    end})
+end
+
+--[[
+--
+-- FLY
+--
+--]]
+
+do
+    local useplatformstand = true
+    local left, right, up, down, frwd, back, x2, x4
+    
+    function Fly ()
+        local bg = Instance.new("BodyGyro", torso)
+        bg.P = 9e4
+        bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+        local bv = Instance.new("BodyVelocity", torso)
+        bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+        
+        if useplatformstand then human.PlatformStand = true end
+        
+        while flying do
+            local camframe = game.Workspace.CurrentCamera.CoordinateFrame
+            bg.cframe = camframe
+            bv.velocity = Vector3.zero
+            local markiplier = (input:IsKeyDown(x4:Get()) and 4) or (input:IsKeyDown(x2:Get()) and 2) or 1
+            if input:IsKeyDown(frwd:Get())  then bv.velocity += flyspeed * markiplier * camframe.LookVector end
+            if input:IsKeyDown(left:Get())  then bv.velocity += flyspeed * markiplier * camframe.RightVector * -1 end
+            if input:IsKeyDown(back:Get())  then bv.velocity += flyspeed * markiplier * camframe.LookVector * -1 end
+            if input:IsKeyDown(right:Get()) then bv.velocity += flyspeed * markiplier * camframe.RightVector end
+            if input:IsKeyDown(up:Get())    then bv.velocity += flyspeed * markiplier * Vector3.new(0,1,0) end
+            if input:IsKeyDown(down:Get())  then bv.velocity += flyspeed * markiplier * Vector3.new(0,-1,0) end
+            wait()
+        end
+        
+        bg:Destroy()
+        bv:Destroy()
+        if useplatformstand then human.PlatformStand = false end
+    end
+    
+    local fly = general:CreateSection({ Name="Fly" })
+    
+    ui_toggle_fly = fly:AddToggle({ Name="Fly", Key=Enum.KeyCode.F, Callback=function(yes)
+        flying = yes
+        if yes then Fly() end
+    end, UnloadFunc = function()
+        flying = false
+    end})
+    
+    fly:AddSlider({ Name="Fly Speed", Value=flyspeed, Min=1, Max=1000, Callback=function(v)
+        flyspeed = v
+    end})
+    
+    fly:AddToggle({ Name="Use PlatformStand", Value=useplatformstand, Callback=function(yes)
+        useplatformstand = yes
+    end})
+    
+    frwd  = fly:AddKeybind({ Name="forwards", Value=Enum.KeyCode.W })
+    back  = fly:AddKeybind({ Name="backwards", Value=Enum.KeyCode.S })
+    left  = fly:AddKeybind({ Name="left",  Value=Enum.KeyCode.A })
+    right = fly:AddKeybind({ Name="right", Value=Enum.KeyCode.D })
+    up    = fly:AddKeybind({ Name="up",    Value=Enum.KeyCode.Space })
+    down  = fly:AddKeybind({ Name="down",  Value=Enum.KeyCode.LeftShift })
+    x2    = fly:AddKeybind({ Name="2x speed (hold)", Value=Enum.KeyCode.LeftControl })
+    x4    = fly:AddKeybind({ Name="4x speed (hold)", Value=Enum.KeyCode.LeftAlt })
+end
+
+--[[
+--
+-- JAILBREAK
+--
+--]]
+
+do
+    local jb = pepsi:CreateTab({ Name="JailBreak" })
+    local g = jb:CreateSection({ Name="General" })
+    
+    function SetGCProperties (prop, value)
+        for _,v in pairs(getgc(true)) do
+            if type(v) == 'table' then
+                SetProperty(v, prop, value)
+            end
+        end
+    end
+    
+    function RestoreGCProperties (prop)
+        for _,v in pairs(getgc(true)) do
+            if type(v) == 'table' then
+                RestoreProperty(v, prop)
+            end
+        end
+    end
+    
+    g:AddToggle({ Name="Keycard", Key=true,  Callback=function(yes)
+        if yes then
+            SetGCProperties("hasKey", function() return true end) 
+        else
+            RestoreGCProperties("hasKey") 
+        end
+    end})
+
+    g:AddToggle({ Name="No camera shake", Key=true, Callback=function(yes)
+        if yes then
+            SetGCProperties("CamShakeMagnitude", 0)
+        else
+            RestoreGCProperties("CamShakeMagnitude")
+        end
+    end})
+    
+    g:AddToggle({ Name="No bullet spread", Key=true, Callback=function(yes)
+        if yes then
+            SetGCProperties("BulletSpread", 0)
+        else
+            RestoreGCProperties("BulletSpread")
+        end
+    end})
+end
