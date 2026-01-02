@@ -1,130 +1,122 @@
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/jensonhirst/Orion/main/source')))()
-local Window = OrionLib:MakeWindow({Name = "ARISE: AUTO DUNGEON", HidePremium = false, SaveConfig = true, ConfigFolder = "AriseDungeon"})
+-- SETTINGS & VARIABLES
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local root = char:WaitForChild("HumanoidRootPart")
+local TweenService = game:GetService("TweenService")
 
--- SETTINGS
 getgenv().autoSearch = false
 getgenv().autoClear = false
-getgenv().TweenSpeed = 200
+getgenv().speed = 200
 
-local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local tween
+local currentTween
 
--- FUNGSI GERAK TWEEN
-local function TweenTo(targetCFrame)
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    local rootPart = character.HumanoidRootPart
-    local distance = (rootPart.Position - targetCFrame.Position).Magnitude
-    
-    local tweenInfo = TweenInfo.new(distance / getgenv().TweenSpeed, Enum.EasingStyle.Linear)
-    if tween then tween:Cancel() end
-    tween = TweenService:Create(rootPart, tweenInfo, {CFrame = targetCFrame})
-    tween:Play()
+-- FUNGSI GERAK (TWEEN SPEED 200)
+local function tweenTo(targetCFrame)
+    local distance = (root.Position - targetCFrame.Position).Magnitude
+    local info = TweenInfo.new(distance / getgenv().speed, Enum.EasingStyle.Linear)
+    if currentTween then currentTween:Cancel() end
+    currentTween = TweenService:Create(root, info, {CFrame = targetCFrame})
+    currentTween:Play()
 end
 
--- FUNGSI KLIK UI (PENTING UNTUK MASUK DUNGEON)
-local function ClickDungeonUI()
-    local pGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not pGui then return end
-    for _, v in pairs(pGui:GetDescendants()) do
+-- FUNGSI SERANG (BRIDGENET2)
+local function attack(targetName)
+    local args = {
+        { { Event = "PunchAttack", Enemy = targetName }, "\4" }
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
+end
+
+-- FUNGSI KLIK UI OTOMATIS (JOIN/CREATE)
+local function clickButtons()
+    local gui = player:FindFirstChild("PlayerGui")
+    if not gui then return end
+    for _, v in pairs(gui:GetDescendants()) do
         if v:IsA("TextButton") and v.Visible then
-            local txt = v.Text:lower()
-            if txt:find("create") or txt:find("join") or txt:find("start") or txt:find("enter") then
-                -- Simulasi klik
-                local events = {"MouseButton1Click", "MouseButton1Down", "Activated"}
-                for _, event in pairs(events) do
-                    for _, conn in pairs(getconnections(v[event])) do
-                        conn:Fire()
-                    end
+            local t = v.Text:lower()
+            if t:find("create") or t:find("join") or t:find("start") or t:find("enter") then
+                local events = {"MouseButton1Click", "Activated"}
+                for _, ev in pairs(events) do
+                    for _, conn in pairs(getconnections(v[ev])) do conn:Fire() end
                 end
             end
         end
     end
 end
 
--- TABS
-local DungeonTab = Window:MakeTab({Name = "Dungeon Automation", Icon = "rbxassetid://4483345998"})
+-- UI POLOS (LIGHTWEIGHT)
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 200, 0, 160)
+Frame.Position = UDim2.new(0.5, -100, 0.2, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.Active = true
+Frame.Draggable = true
 
-DungeonTab:AddToggle({
-    Name = "1. AUTO SEARCH PORTAL (Lobby)",
-    Default = false,
-    Callback = function(Value)
-        getgenv().autoSearch = Value
-    end    
-})
+local Title = Instance.new("TextLabel", Frame)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "ARISE LIGHT FIX"
+Title.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Title.TextColor3 = Color3.new(1, 1, 1)
 
-DungeonTab:AddToggle({
-    Name = "2. AUTO CLEAR DUNGEON (Inside)",
-    Default = false,
-    Callback = function(Value)
-        getgenv().autoClear = Value
-    end    
-})
+local SearchBtn = Instance.new("TextButton", Frame)
+SearchBtn.Size = UDim2.new(0, 180, 0, 50)
+SearchBtn.Position = UDim2.new(0, 10, 0, 40)
+SearchBtn.Text = "AUTO SEARCH: OFF"
+SearchBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 
-DungeonTab:AddSlider({
-    Name = "Movement Speed",
-    Min = 50, Max = 500, Default = 200,
-    Color = Color3.fromRGB(0, 255, 255),
-    Increment = 10,
-    ValueName = "Speed",
-    Callback = function(Value)
-        getgenv().TweenSpeed = Value
-    end    
-})
+local ClearBtn = Instance.new("TextButton", Frame)
+ClearBtn.Size = UDim2.new(0, 180, 0, 50)
+ClearBtn.Position = UDim2.new(0, 10, 0, 100)
+ClearBtn.Text = "AUTO CLEAR: OFF"
+ClearBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+
+-- TOGGLE LOGIC
+SearchBtn.MouseButton1Click:Connect(function()
+    getgenv().autoSearch = not getgenv().autoSearch
+    SearchBtn.Text = getgenv().autoSearch and "SEARCH: ON" or "SEARCH: OFF"
+    SearchBtn.BackgroundColor3 = getgenv().autoSearch and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
+end)
+
+ClearBtn.MouseButton1Click:Connect(function()
+    getgenv().autoClear = not getgenv().autoClear
+    ClearBtn.Text = getgenv().autoClear and "CLEAR: ON" or "CLEAR: OFF"
+    ClearBtn.BackgroundColor3 = getgenv().autoClear and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
+end)
 
 -- MAIN LOOP
 task.spawn(function()
     while task.wait(0.1) do
-        -- LOGIKA SEARCH (DILUAR/LOBBY)
+        -- 1. SEARCH LOGIC
         if getgenv().autoSearch then
-            local portal = nil
             for _, v in pairs(workspace:GetDescendants()) do
                 if v:IsA("BasePart") and (v.Name:lower():find("portal") or v.Name:lower():find("dungeon")) then
-                    portal = v
+                    tweenTo(v.CFrame)
+                    clickButtons()
                     break
                 end
             end
-            
-            if portal then
-                TweenTo(portal.CFrame)
-                ClickDungeonUI() -- Mencoba klik tombol Create/Join yang muncul
-            end
         end
 
-        -- LOGIKA CLEAR (DIDALAM DUNGEON)
+        -- 2. CLEAR LOGIC (BERDASARKAN STRUKTUR GAME KAMU)
         if getgenv().autoClear then
             local enemyFolder = workspace:FindFirstChild("__Main") and workspace.__Main:FindFirstChild("__Enemies") and workspace.__Main.__Enemies:FindFirstChild("Client")
-            
             if enemyFolder then
                 local target = nil
-                local minDist = math.huge
-                
+                local dist = math.huge
                 for _, v in pairs(enemyFolder:GetChildren()) do
-                    local hp = v:FindFirstChild("HealthBar") and v.HealthBar:FindFirstChild("Main") and v.HealthBar.Main:FindFirstChild("Bar") and v.HealthBar.Main.Bar:FindFirstChild("Amount")
+                    local hp = v:FindFirstChild("HealthBar") and v.HealthBar.Main.Bar.Amount
                     local hrp = v:FindFirstChild("HumanoidRootPart")
-                    
                     if hp and hrp and hp.ContentText ~= "0 HP" then
-                        local dist = (LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
-                        if dist < minDist then
-                            minDist = dist
-                            target = {root = hrp, name = v.Name}
-                        end
+                        local d = (root.Position - hrp.Position).Magnitude
+                        if d < dist then dist = d target = v end
                     end
                 end
-                
                 if target then
-                    TweenTo(target.root.CFrame * CFrame.new(0, 0, 3))
-                    -- Serang
-                    local args = {
-                        { { Event = "PunchAttack", Enemy = target.name }, "\4" }
-                    }
-                    game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
+                    tweenTo(target.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3))
+                    attack(target.Name)
                 end
             end
         end
     end
 end)
-
-OrionLib:Init()
