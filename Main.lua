@@ -42,9 +42,18 @@ function Library:Init(hubName)
     HeaderBar.BorderSizePixel = 0
     Instance.new("UICorner", HeaderBar).CornerRadius = UDim.new(0, 8)
 
+    -- Drag Area (Blok sejajar untuk drag)
+    local DragArea = Instance.new("TextButton", HeaderBar)
+    DragArea.Size = UDim2.new(1, -70, 1, 0)
+    DragArea.Position = UDim2.new(0, 0, 0, 0)
+    DragArea.BackgroundColor3 = Theme.Sidebar
+    DragArea.TextTransparency = 1
+    DragArea.BorderSizePixel = 0
+    DragArea.AutoButtonColor = false
+
     -- Judul di Header
-    local HeaderTitle = Instance.new("TextLabel", HeaderBar)
-    HeaderTitle.Size = UDim2.new(1, -100, 1, 0)
+    local HeaderTitle = Instance.new("TextLabel", DragArea)
+    HeaderTitle.Size = UDim2.new(1, 0, 1, 0)
     HeaderTitle.Text = hubName
     HeaderTitle.TextColor3 = Theme.Accent
     HeaderTitle.BackgroundTransparency = 1
@@ -85,9 +94,13 @@ function Library:Init(hubName)
         if isMinimized then
             MainFrame.Size = UDim2.new(0, 450, 0, 35)
             MinimizeBtn.Text = "+"
+            Container.Visible = false
+            Sidebar.Visible = false
         else
             MainFrame.Size = originalSize
             MinimizeBtn.Text = "−"
+            Container.Visible = true
+            Sidebar.Visible = true
         end
     end)
 
@@ -102,7 +115,7 @@ function Library:Init(hubName)
     local dragStart = Vector2.new(0, 0)
     local frameStart = UDim2.new(0, 0, 0, 0)
 
-    HeaderBar.InputBegan:Connect(function(input, gameProcessed)
+    DragArea.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
