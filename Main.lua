@@ -17,7 +17,7 @@ local Root = Character:WaitForChild("HumanoidRootPart")
 local Remote = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
 
 getgenv().AutoLoop = false
-getgenv().Speed = 250 
+getgenv().Speed = 700
 
 -- 1. FUNGSI TWEEN
 local function TweenTo(targetCFrame)
@@ -128,3 +128,4 @@ task.spawn(function()
         end
     end
 end)
+
