@@ -17,26 +17,41 @@ local Root = Character:WaitForChild("HumanoidRootPart")
 local Remote = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
 
 getgenv().AutoLoop = false
-getgenv().Speed = 700
-getgenv().AutoFindDungeon = true -- Fitur baru: otomatis cari Dungeon setelah NPC habis
+getgenv().Speed = 1000
+getgenv().AutoFindDungeon = true
+getgenv().CurrentDungeonStage = "Idle" -- Untuk melacak stage dungeon
 
--- 1. FUNGSI TWEEN
+-- 1. FUNGSI TWEEN (Diperbaiki dengan error handling)
 local function TweenTo(targetCFrame)
-    if not Root or not targetCFrame then return end
+    if not Root or not targetCFrame then 
+        warn("Root atau targetCFrame tidak valid")
+        return false 
+    end
+    
     local dist = (Root.Position - targetCFrame.Position).Magnitude
-    if dist < 4 then return true end
-    local info = TweenInfo.new(dist / getgenv().Speed, Enum.EasingStyle.Linear)
-    local tw = TweenService:Create(Root, info, {CFrame = targetCFrame})
-    tw:Play()
-    tw.Completed:Wait()
+    if dist < 4 then 
+        return true 
+    end
+    
+    local success, errorMsg = pcall(function()
+        local info = TweenInfo.new(dist / getgenv().Speed, Enum.EasingStyle.Linear)
+        local tw = TweenService:Create(Root, info, {CFrame = targetCFrame})
+        tw:Play()
+        tw.Completed:Wait()
+    end)
+    
+    if not success then
+        warn("Tween gagal:", errorMsg)
+        return false
+    end
+    
     return true
 end
 
--- 2. FUNGSI CARI OBJECT (Bukan cuma nama "Dungeon")
+-- 2. FUNGSI CARI OBJECT
 local function GetPortalObject(folderName)
     local folder = workspace:FindFirstChild(folderName)
     if folder then
-        -- Mencari objek fisik pertama (Part/MeshPart) di dalam folder tersebut
         for _, obj in pairs(folder:GetChildren()) do
             if obj:IsA("BasePart") then
                 return obj
@@ -48,38 +63,50 @@ local function GetPortalObject(folderName)
     return nil
 end
 
--- 3. LOGIKA MUSUH SESUAI KODE ASLI ANDA
+-- 3. LOGIKA MUSUH DENGAN VERIFIKASI LEBIH KETAT
 local function GetEnemy()
-    local client = workspace:FindFirstChild("__Main") and workspace.__Main:FindFirstChild("__Enemies") and workspace.__Main.__Enemies:FindFirstChild("Client")
+    -- Reset untuk menghindari cache lama
+    local client = workspace:FindFirstChild("__Main") 
+    and workspace.__Main:FindFirstChild("__Enemies") 
+    and workspace.__Main.__Enemies:FindFirstChild("Client")
+    
     if client then
         for _, mob in pairs(client:GetChildren()) do
-            local hp = mob:FindFirstChild("HealthBar") and mob.HealthBar.Main.Bar.Amount
-            if hp and hp.ContentText ~= "0 HP" then 
-                return mob 
+            -- Verifikasi bahwa mob valid
+            if mob:IsA("Model") then
+                local humanoidRootPart = mob:FindFirstChild("HumanoidRootPart")
+                local hp = mob:FindFirstChild("HealthBar") and mob.HealthBar.Main.Bar.Amount
+                
+                -- Pastikan semua komponen ada
+                if humanoidRootPart and hp then
+                    -- Cek HP tidak 0 dan HP valid
+                    if hp.ContentText ~= "0 HP" and hp.ContentText ~= "" then
+                        return mob
+                    end
+                end
             end
         end
     end
     return nil
 end
 
--- 4. FUNGSI UNTUK MENDETEKSI APAKAH MASIH ADA NPC YANG HIDUP (Versi sederhana)
-local function AreEnemiesAlive()
-    local client = workspace:FindFirstChild("__Main") and workspace.__Main:FindFirstChild("__Enemies") and workspace.__Main.__Enemies:FindFirstChild("Client")
-    if not client then return false end
+-- 4. FUNGSI UNTUK MENDETEKSI DUNGEON BARU
+local function CheckForNewDungeon()
+    -- Cek apakah ada object Dungeon baru
+    local dungeonFolders = {"__Dungeon", "Dungeon", "_Dungeon"}
     
-    for _, mob in pairs(client:GetChildren()) do
-        local hp = mob:FindFirstChild("HealthBar") and mob.HealthBar.Main.Bar.Amount
-        if hp and hp.ContentText ~= "0 HP" then
-            return true -- Masih ada NPC yang hidup
+    for _, folderName in ipairs(dungeonFolders) do
+        local obj = GetPortalObject(folderName)
+        if obj then
+            return true
         end
     end
     
-    return false -- Semua NPC sudah mati
+    return false
 end
 
--- 5. FUNGSI UNTUK MENCARI DAN MASUK DUNGEON
-local function FindAndEnterDungeon()
-    -- Cari object Dungeon di berbagai lokasi yang mungkin
+-- 5. FUNGSI UNTUK MASUK DUNGEON
+local function EnterDungeon()
     local dungeonFolders = {
         "__Dungeon",
         "Dungeon",
@@ -101,19 +128,25 @@ local function FindAndEnterDungeon()
                     Remote:FireServer({[1] = {["Dungeon"] = i, ["Event"] = "DungeonAction", ["Action"] = "Start"}, [2] = "\4"}) 
                     task.wait(0.1)
                 end
+                getgenv().CurrentDungeonStage = "DungeonEntered"
                 return true
             end
         end
     end
     
-    warn("Tidak ada Dungeon object ditemukan!")
     return false
 end
 
--- 6. UI CONSTRUCTION
+-- 6. FUNGSI RESET STATE
+local function ResetState()
+    getgenv().CurrentDungeonStage = "Idle"
+    print("State telah direset")
+end
+
+-- 7. UI CONSTRUCTION
 local ScreenGui = Instance.new("ScreenGui", (game:GetService("CoreGui") or Player:WaitForChild("PlayerGui")))
 local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 250, 0, 220) -- Diperbesar sedikit
+MainFrame.Size = UDim2.new(0, 250, 0, 220)
 MainFrame.Position = UDim2.new(0.5, -125, 0.4, -110)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.Active = true
@@ -183,7 +216,7 @@ BtnSearch.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
 BtnSearch.TextColor3 = Color3.new(1,1,1)
 
 BtnSearch.MouseButton1Click:Connect(function()
-    if FindAndEnterDungeon() then
+    if EnterDungeon() then
         StatusLabel.Text = "Status: Dungeon Found"
         StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
     else
@@ -207,91 +240,126 @@ BtnLoop.MouseButton1Click:Connect(function()
     if getgenv().AutoLoop then
         StatusLabel.Text = "Status: AUTO LOOP ACTIVE"
         StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        ResetState()
     else
         StatusLabel.Text = "Status: IDLE"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     end
 end)
 
--- 7. MAIN INTEGRATED LOOP
+-- 8. MAIN INTEGRATED LOOP (Diperbaiki)
 task.spawn(function()
     local lastDungeonSearchTime = 0
-    local dungeonSearchCooldown = 5 -- Cooldown 5 detik antara pencarian Dungeon
-    local enemyCheckCounter = 0
-    local consecutiveNoEnemyCount = 0 -- Untuk deteksi konsisten tidak ada musuh
+    local dungeonSearchCooldown = 5
+    local consecutiveNoEnemyCount = 0
+    local lastValidEnemyTime = 0
     
     while task.wait(0.5) do
         if getgenv().AutoLoop then
             local currentTime = tick()
             
-            -- Gunakan fungsi GetEnemy sesuai kode asli Anda
+            -- Cek apakah ada Dungeon baru tersedia
+            local newDungeonAvailable = CheckForNewDungeon()
+            
+            -- Jika ada Dungeon baru, reset state
+            if newDungeonAvailable and getgenv().CurrentDungeonStage == "DungeonEntered" then
+                ResetState()
+                StatusLabel.Text = "Status: NEW DUNGEON DETECTED"
+                StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+            end
+            
+            -- Dapatkan NPC dengan verifikasi ketat
             local enemy = GetEnemy()
             
             if enemy then
-                -- Reset counter jika menemukan musuh
-                consecutiveNoEnemyCount = 0
-                
-                -- Jika ada NPC, serang
-                StatusLabel.Text = "Status: ATTACKING NPC"
-                StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 0)
-                
-                if TweenTo(enemy.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)) then
-                    Remote:FireServer({[1] = {[1] = {["Event"] = "PunchAttack", ["Enemy"] = enemy.Name}, [2] = "\4"}})
+                -- Verifikasi bahwa enemy benar-benar ada dan valid
+                local humanoidRootPart = enemy:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    lastValidEnemyTime = currentTime
+                    consecutiveNoEnemyCount = 0
+                    
+                    -- Update status
+                    StatusLabel.Text = "Status: ATTACKING NPC"
+                    StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 0)
+                    
+                    -- Coba Tween dengan error handling
+                    local tweenSuccess = TweenTo(humanoidRootPart.CFrame * CFrame.new(0, 0, 3))
+                    
+                    if tweenSuccess then
+                        -- Serang setelah tween berhasil
+                        Remote:FireServer({[1] = {[1] = {["Event"] = "PunchAttack", ["Enemy"] = enemy.Name}, [2] = "\4"}})
+                    else
+                        StatusLabel.Text = "Status: TWEEN FAILED"
+                        StatusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                    end
+                else
+                    -- Jika enemy tidak memiliki HumanoidRootPart, anggap invalid
+                    consecutiveNoEnemyCount = consecutiveNoEnemyCount + 1
                 end
             else
-                -- Tambah counter jika tidak ada musuh
                 consecutiveNoEnemyCount = consecutiveNoEnemyCount + 1
                 
-                -- Hanya cari Dungeon jika konsisten tidak ada musuh selama beberapa detik (2.5 detik)
-                if consecutiveNoEnemyCount >= 5 then -- 5 x 0.5 detik = 2.5 detik
+                -- Jika tidak ada NPC selama 3 detik
+                if consecutiveNoEnemyCount >= 6 then -- 6 x 0.5 = 3 detik
                     StatusLabel.Text = "Status: NO NPC FOUND"
                     StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
                     
-                    -- Cek apakah fitur Auto Find Dungeon aktif dan cooldown sudah selesai
-                    if getgenv().AutoFindDungeon and (currentTime - lastDungeonSearchTime) > dungeonSearchCooldown then
-                        StatusLabel.Text = "Status: SEARCHING DUNGEON..."
-                        StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
+                    -- Cek apakah sudah ada di stage Dungeon
+                    if getgenv().CurrentDungeonStage == "DungeonEntered" then
+                        StatusLabel.Text = "Status: WAITING FOR NEW DUNGEON"
+                        StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 0)
                         
-                        -- Cari object Dungeon
-                        local dungeonFound = false
-                        
-                        -- Coba cari di LastNpcs terlebih dahulu
-                        local replayObj = GetPortalObject("LastNpcs")
-                        if replayObj then
-                            if TweenTo(replayObj.CFrame) then
-                                Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "TestEnter"}, [2] = "\4"})
-                                dungeonFound = true
-                                task.wait(2)
+                        -- Tunggu 5 detik sebelum mencari Dungeon lagi
+                        if (currentTime - lastDungeonSearchTime) > dungeonSearchCooldown then
+                            if CheckForNewDungeon() then
+                                StatusLabel.Text = "Status: NEW DUNGEON AVAILABLE"
+                                StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
                             end
                         end
-                        
-                        -- Jika tidak ditemukan di LastNpcs, cari di folder Dungeon lainnya
-                        if not dungeonFound then
-                            dungeonFound = FindAndEnterDungeon()
-                        end
-                        
-                        lastDungeonSearchTime = currentTime
-                        
-                        if dungeonFound then
-                            StatusLabel.Text = "Status: DUNGEON ENTERED"
-                            StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-                            task.wait(3) -- Tunggu sebentar setelah masuk dungeon
-                        else
-                            StatusLabel.Text = "Status: DUNGEON NOT FOUND"
-                            StatusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-                        end
                     else
-                        -- Jika sedang cooldown, tunggu
-                        local remainingTime = math.floor(dungeonSearchCooldown - (currentTime - lastDungeonSearchTime))
-                        if remainingTime > 0 then
-                            StatusLabel.Text = "Status: COOLDOWN " .. remainingTime .. "s"
-                            StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+                        -- Jika belum masuk Dungeon dan fitur aktif, cari Dungeon
+                        if getgenv().AutoFindDungeon and (currentTime - lastDungeonSearchTime) > dungeonSearchCooldown then
+                            StatusLabel.Text = "Status: SEARCHING DUNGEON..."
+                            StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
+                            
+                            local dungeonFound = false
+                            local replayObj = GetPortalObject("LastNpcs")
+                            
+                            if replayObj then
+                                if TweenTo(replayObj.CFrame) then
+                                    Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "TestEnter"}, [2] = "\4"})
+                                    dungeonFound = true
+                                    task.wait(2)
+                                end
+                            end
+                            
+                            if not dungeonFound then
+                                dungeonFound = EnterDungeon()
+                            end
+                            
+                            lastDungeonSearchTime = currentTime
+                            
+                            if dungeonFound then
+                                StatusLabel.Text = "Status: DUNGEON ENTERED"
+                                StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                                task.wait(3)
+                            else
+                                StatusLabel.Text = "Status: DUNGEON NOT FOUND"
+                                StatusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                            end
+                        else
+                            -- Tampilkan cooldown
+                            local remainingTime = math.floor(dungeonSearchCooldown - (currentTime - lastDungeonSearchTime))
+                            if remainingTime > 0 then
+                                StatusLabel.Text = "Status: COOLDOWN " .. remainingTime .. "s"
+                                StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+                            end
                         end
                     end
                 else
-                    -- Tampilkan countdown sampai pencarian Dungeon
-                    local timeUntilSearch = math.ceil((5 - consecutiveNoEnemyCount) * 0.5)
-                    StatusLabel.Text = "Status: Waiting " .. timeUntilSearch .. "s"
+                    -- Tampilkan countdown
+                    local timeUntilSearch = math.ceil((6 - consecutiveNoEnemyCount) * 0.5)
+                    StatusLabel.Text = "Status: Checking NPCs (" .. timeUntilSearch .. "s)"
                     StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 0)
                 end
             end
@@ -299,6 +367,39 @@ task.spawn(function()
     end
 end)
 
+-- 9. AUTO RESET WHEN DUNGEON CHANGES
+task.spawn(function()
+    while task.wait(1) do
+        if getgenv().AutoLoop then
+            -- Cek jika ada perubahan pada folder Dungeon
+            local hasDungeon = CheckForNewDungeon()
+            
+            -- Jika sebelumnya tidak ada Dungeon tapi sekarang ada, reset state
+            if hasDungeon and getgenv().CurrentDungeonStage == "Idle" then
+                StatusLabel.Text = "Status: DUNGEON READY"
+                StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 255)
+            end
+            
+            -- Jika lebih dari 10 detik tanpa enemy dan sudah di Dungeon, reset
+            if getgenv().CurrentDungeonStage == "DungeonEntered" then
+                local client = workspace:FindFirstChild("__Main") 
+                and workspace.__Main:FindFirstChild("__Enemies") 
+                and workspace.__Main.__Enemies:FindFirstChild("Client")
+                
+                if client and #client:GetChildren() == 0 then
+                    -- Tunggu 10 detik sebelum reset
+                    task.wait(10)
+                    if #client:GetChildren() == 0 then
+                        ResetState()
+                        StatusLabel.Text = "Status: DUNGEON COMPLETED - RESET"
+                        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 0)
+                    end
+                end
+            end
+        end
+    end
+end)
+
 print("ARISE FINAL Script Loaded!")
-print("Menggunakan deteksi NPC sesuai kode asli")
+print("Auto Loop dengan deteksi NPC yang diperbaiki")
 print("Auto Find Dungeon: " .. (getgenv().AutoFindDungeon and "Enabled" or "Disabled"))
