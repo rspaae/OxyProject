@@ -1,8 +1,8 @@
 --[[ 
-    ARISE FINAL - FORCE DETECTION VERSION
-    - Fix: Deteksi paksa portal di __Dungeon & LastNpcs
-    - Prioritas: NPC > BOSS > REPLAY
-    - UI: Minimize & Close
+    ARISE FINAL - LOBBY & LOOP FIX
+    - Fix: Tombol Search Lobby sekarang memindai seluruh Workspace secara mendalam.
+    - Logic: Jika di Lobby, karakter akan paksa interaksi ke portal pertama yang ditemukan.
+    - Loop: Tetap fokus NPC dulu, baru Replay.
 ]]
 
 if not game:IsLoaded() then game.Loaded:Wait() end
@@ -19,30 +19,40 @@ local Remote = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRe
 getgenv().AutoLoop = false
 getgenv().Speed = 250 
 
--- 1. FUNGSI TWEEN
+-- 1. FUNGSI TWEEN (DITINGKATKAN)
 local function TweenTo(targetCFrame)
     if not Root or not targetCFrame then return end
     local dist = (Root.Position - targetCFrame.Position).Magnitude
     if dist < 4 then return true end
+    
     local info = TweenInfo.new(dist / getgenv().Speed, Enum.EasingStyle.Linear)
-    local tween = TweenService:Create(Root, info, {CFrame = targetCFrame})
-    tween:Play()
-    tween.Completed:Wait()
+    local tw = TweenService:Create(Root, info, {CFrame = targetCFrame})
+    tw:Play()
+    tw.Completed:Wait()
     return true
 end
 
--- 2. DETEKSI PORTAL PAKSA (Lobby & Replay)
-local function FindPortal(parentName)
-    local folder = workspace:FindFirstChild(parentName)
-    if folder then
-        -- Mencari objek bernama "Dungeon" sesuai hasil scan
-        local portal = folder:FindFirstChild("Dungeon") or folder:FindFirstChildWhichIsA("BasePart", true)
-        if portal then return portal end
+-- 2. FUNGSI SCAN PORTAL AGRESIF
+-- Fungsi ini akan mencari objek bernama "Dungeon" di manapun ia berada
+local function FindDungeonPortal(parentFilter)
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name == "Dungeon" and v:IsA("BasePart") then
+            -- Jika kita mencari di Lobby (__Dungeon) atau Replay (LastNpcs)
+            if v:IsDescendantOf(workspace:FindFirstChild(parentFilter)) or v.Parent.Name == parentFilter then
+                return v
+            end
+        end
+    end
+    -- Fallback: Jika folder parent tidak ketemu, ambil objek "Dungeon" terdekat
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name == "Dungeon" and v:IsA("BasePart") then
+            return v
+        end
     end
     return nil
 end
 
--- 3. DETEKSI MUSUH
+-- 3. LOGIKA MUSUH
 local function GetEnemy()
     local client = workspace:FindFirstChild("__Main") and workspace.__Main:FindFirstChild("__Enemies") and workspace.__Main.__Enemies:FindFirstChild("Client")
     if client then
@@ -65,58 +75,47 @@ TopBar.Size = UDim2.new(1, 0, 0, 40); TopBar.BackgroundColor3 = Color3.fromRGB(4
 local CloseBtn = Instance.new("TextButton", TopBar)
 CloseBtn.Text = "X"; CloseBtn.Size = UDim2.new(0, 40, 0, 40); CloseBtn.Position = UDim2.new(1, -40, 0, 0); CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0); CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy(); getgenv().AutoLoop = false end)
 
-local MiniBtn = Instance.new("TextButton", TopBar)
-MiniBtn.Text = "-"; MiniBtn.Size = UDim2.new(0, 40, 0, 40); MiniBtn.Position = UDim2.new(1, -80, 0, 0); MiniBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+local BtnSearch = Instance.new("TextButton", MainFrame)
+BtnSearch.Text = "🔍 AUTO SEARCH LOBBY"; BtnSearch.Size = UDim2.new(0, 230, 0, 50); BtnSearch.Position = UDim2.new(0, 10, 0, 50); BtnSearch.BackgroundColor3 = Color3.fromRGB(0, 100, 200); BtnSearch.TextColor3 = Color3.new(1,1,1)
 
-local Content = Instance.new("Frame", MainFrame)
-Content.Size = UDim2.new(1, 0, 1, -40); Content.Position = UDim2.new(0, 0, 0, 40); Content.BackgroundTransparency = 1
-
-MiniBtn.MouseButton1Click:Connect(function()
-    Content.Visible = not Content.Visible
-    MainFrame.Size = Content.Visible and UDim2.new(0, 250, 0, 180) or UDim2.new(0, 250, 0, 40)
-    MiniBtn.Text = Content.Visible and "-" or "+"
-end)
-
--- Tombol Search Khusus Lobby
-local BtnSearch = Instance.new("TextButton", Content)
-BtnSearch.Text = "🔍 FORCE SEARCH DUNGEON"; BtnSearch.Size = UDim2.new(0, 230, 0, 50); BtnSearch.Position = UDim2.new(0, 10, 0, 10); BtnSearch.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
 BtnSearch.MouseButton1Click:Connect(function()
-    local portal = FindPortal("__Dungeon")
-    if portal and TweenTo(portal.CFrame) then
-        Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "TestEnter"}, [2] = "\4"})
-        task.wait(0.5)
-        Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "Create"}, [2] = "\4"})
-        task.wait(0.5)
-        for i = 1, 3 do Remote:FireServer({[1] = {["Dungeon"] = i, ["Event"] = "DungeonAction", ["Action"] = "Start"}, [2] = "\4"}) end
+    print("Mencari portal lobby...")
+    local p = FindDungeonPortal("__Dungeon")
+    if p then
+        if TweenTo(p.CFrame) then
+            Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "TestEnter"}, [2] = "\4"})
+            task.wait(0.5)
+            Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "Create"}, [2] = "\4"})
+            task.wait(0.5)
+            for i = 1, 3 do Remote:FireServer({[1] = {["Dungeon"] = i, ["Event"] = "DungeonAction", ["Action"] = "Start"}, [2] = "\4"}) end
+        end
+    else
+        warn("Portal tidak ditemukan! Pastikan kamu di Lobby.")
     end
 end)
 
--- Tombol Auto Loop
-local BtnLoop = Instance.new("TextButton", Content)
-BtnLoop.Text = "AUTO LOOP: OFF"; BtnLoop.Size = UDim2.new(0, 230, 0, 50); BtnLoop.Position = UDim2.new(0, 10, 0, 70); BtnLoop.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+local BtnLoop = Instance.new("TextButton", MainFrame)
+BtnLoop.Text = "AUTO LOOP: OFF"; BtnLoop.Size = UDim2.new(0, 230, 0, 50); BtnLoop.Position = UDim2.new(0, 10, 0, 110); BtnLoop.BackgroundColor3 = Color3.fromRGB(60, 60, 60); BtnLoop.TextColor3 = Color3.new(1,1,1)
+
 BtnLoop.MouseButton1Click:Connect(function()
     getgenv().AutoLoop = not getgenv().AutoLoop
     BtnLoop.Text = getgenv().AutoLoop and "AUTO LOOP: ON" or "AUTO LOOP: OFF"
     BtnLoop.BackgroundColor3 = getgenv().AutoLoop and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
 end)
 
--- 5. MAIN LOGIC THREAD
+-- 5. MAIN INTEGRATED LOOP
 task.spawn(function()
     while task.wait(0.5) do
         if getgenv().AutoLoop then
             local enemy = GetEnemy()
             if enemy then
-                -- Bunuh NPC
                 TweenTo(enemy.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3))
                 Remote:FireServer({[1] = {[1] = {["Event"] = "PunchAttack", ["Enemy"] = enemy.Name}, [2] = "\4"}})
             else
-                -- Cari Replay di LastNpcs
-                local replayPortal = FindPortal("LastNpcs")
-                if replayPortal then
-                    if TweenTo(replayPortal.CFrame) then
-                        Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "TestEnter"}, [2] = "\4"})
-                        task.wait(2)
-                    end
+                local p = FindDungeonPortal("LastNpcs")
+                if p and TweenTo(p.CFrame) then
+                    Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "TestEnter"}, [2] = "\4"})
+                    task.wait(2)
                 end
             end
         end
