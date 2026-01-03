@@ -1,162 +1,249 @@
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+--[[
+    SIMPLE ARISE AUTOMATION BASE
+    Dibuat untuk: Remake & Customization
+    Fitur: Auto Dungeon (Remote), Auto Farm, Smart Tween (Stop at Target)
+]]
 
--- // // // Services // // // --
+-- 1. LAYANAN & VARIABEL UTAMA
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
 
--- // // // Locals // // // --
 local LocalPlayer = Players.LocalPlayer
-local LocalCharacter = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local HumanoidRootPart = LocalCharacter:WaitForChild("HumanoidRootPart")
 local Remote = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
 
--- // // // Global Variables // // // --
-getgenv().AutoDungeon = false
-getgenv().AutoFarmDung = false
-getgenv().TweenSpeed = 200
-
-local currentTween = nil
-local isAtTarget = false
-local processingDungeon = false
-
--- // // // Functions // // // --
-
--- 1. Smart Tween (Diam jika sudah sampai)
-local function tweenTo(targetCFrame)
-    local distance = (HumanoidRootPart.Position - targetCFrame.Position).Magnitude
-    if distance < 4 then
-        if currentTween then currentTween:Cancel(); currentTween = nil end
-        isAtTarget = true
-        return
-    end
-    isAtTarget = false
-    local info = TweenInfo.new(distance / getgenv().TweenSpeed, Enum.EasingStyle.Linear)
-    if currentTween then currentTween:Cancel() end
-    currentTween = TweenService:Create(HumanoidRootPart, info, {CFrame = targetCFrame})
-    currentTween:Play()
-end
-
--- 2. Instant Dungeon Entry (Remote Logic)
-local function InstantEnter()
-    -- Trigger Dialog
-    Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "TestEnter"}, [2] = "\n"})
-    task.wait(0.8)
-    -- Create Room
-    Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "Create"}, [2] = "\n"})
-    task.wait(0.8)
-    -- Start Room (Loop ID 1-3)
-    for i = 1, 3 do
-        Remote:FireServer({[1] = {["Dungeon"] = i, ["Event"] = "DungeonAction", ["Action"] = "Start"}, [2] = "\n"})
-        task.wait(0.3)
-    end
-end
-
--- // // // Fluent UI Setup // // // --
-local Fluent = loadstring(game:HttpGet("https://you.whimper.xyz/sources/Fluent/main.lua"))()
-
-local Window = Fluent:CreateWindow({
-    Title = "Arise Crossover [FIXED]",
-    SubTitle = "by Adam & Gemini",
-    TabWidth = 130,
-    Size = UDim2.fromOffset(550, 330),
-    Acrylic = false,
-    Theme = "Amethyst",
-    MinimizeKey = Enum.KeyCode.LeftControl
-})
-
-local Tabs = {
-    Main = Window:AddTab({ Title = "Main", Icon = "gamepad-2" }),
-    Dungeon = Window:AddTab({ Title = "Dungeon", Icon = "swords" }),
-    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+-- Pengaturan Awal (Bisa kamu ubah default-nya)
+getgenv().Config = {
+    AutoDungeon = false,
+    AutoFarm = false,
+    TweenSpeed = 200,    -- Kecepatan terbang
+    StopDistance = 4     -- Jarak berhenti dari target
 }
 
--- // // // UI Elements // // // --
+-- Variabel Status (Jangan diubah)
+local currentTween = nil
+local isAtTarget = false
+local isBusy = false -- Supaya tidak spam perintah masuk dungeon
 
--- Tab Main (Contoh dari kodemu)
-Tabs.Main:AddParagraph({
-    Title = "Status",
-    Content = "Karakter: " .. LocalPlayer.DisplayName
-})
+-- 2. FUNGSI GERAKAN (SMART TWEEN)
+-- Fungsi ini otomatis berhenti jika sudah dekat target
+local function SmartMove(targetCFrame)
+    local Character = LocalPlayer.Character
+    if not Character then return end
+    local Root = Character:FindFirstChild("HumanoidRootPart")
+    if not Root then return end
 
--- Tab Dungeon
-local DungSection = Tabs.Dungeon:AddSection("Dungeon Automation")
+    local distance = (Root.Position - targetCFrame.Position).Magnitude
 
-DungSection:AddToggle("TglDung", {Title = "Auto Search & Enter Portal", Default = false}):OnChanged(function(Value)
-    getgenv().AutoDungeon = Value
+    -- Jika sudah dekat (di bawah jarak berhenti), matikan tween & diam
+    if distance < getgenv().Config.StopDistance then
+        if currentTween then
+            currentTween:Cancel()
+            currentTween = nil
+        end
+        isAtTarget = true -- Memberitahu skrip bahwa kita sudah sampai
+        return
+    end
+
+    -- Jika masih jauh, terbang ke sana
+    isAtTarget = false
+    local info = TweenInfo.new(distance / getgenv().Config.TweenSpeed, Enum.EasingStyle.Linear)
+    
+    -- Mencegah pembuatan tween baru jika targetnya sama (Optimasi)
+    if currentTween and currentTween.PlaybackState == Enum.PlaybackState.Playing then
+        -- Opsional: Bisa tambahkan cek target disini jika mau lebih canggih
+    else
+        currentTween = TweenService:Create(Root, info, {CFrame = targetCFrame})
+        currentTween:Play()
+    end
+end
+
+-- 3. FUNGSI LOGIKA GAME (REMOTE)
+-- Fungsi untuk membantai musuh
+local function AttackMob(mobName)
+    local args = {
+        [1] = {
+            [1] = {
+                ["Event"] = "PunchAttack",
+                ["Enemy"] = mobName
+            },
+            [2] = "\4" -- Signature serangan Arise
+        }
+    }
+    Remote:FireServer(unpack(args))
+end
+
+-- Fungsi urutan masuk Dungeon otomatis
+local function EnterDungeon()
+    if isBusy then return end
+    isBusy = true
+    
+    -- Urutan Remote (Bisa kamu tambah print untuk debug)
+    Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "TestEnter"}, [2] = "\n"})
+    task.wait(0.8)
+    
+    Remote:FireServer({[1] = {["Event"] = "DungeonAction", ["Action"] = "Create"}, [2] = "\n"})
+    task.wait(0.8)
+    
+    -- Loop ID jaga-jaga
+    for i = 1, 3 do
+        Remote:FireServer({[1] = {["Dungeon"] = i, ["Event"] = "DungeonAction", ["Action"] = "Start"}, [2] = "\n"})
+        task.wait(0.2)
+    end
+    
+    task.wait(3) -- Cooldown loading screen
+    isBusy = false
+end
+
+-- 4. PEMBUATAN UI SEDERHANA (Mudah di-remake)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AriseSimpleGUI"
+ScreenGui.Parent = game.CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Position = UDim2.new(0.5, -100, 0.5, -75)
+MainFrame.Size = UDim2.new(0, 200, 0, 150)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+-- Judul
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.Text = "ARISE CUSTOM"
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 18
+
+-- Tombol Close
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Parent = MainFrame
+CloseBtn.Text = "X"
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -30, 0, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+CloseBtn.TextColor3 = Color3.new(1, 1, 1)
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+    getgenv().Config.AutoDungeon = false
+    getgenv().Config.AutoFarm = false
 end)
 
-DungSection:AddToggle("TglFarmDung", {Title = "Auto Clear (Attack NPC)", Default = false}):OnChanged(function(Value)
-    getgenv().AutoFarmDung = Value
+-- Tombol Minimize
+local MinBtn = Instance.new("TextButton")
+MinBtn.Parent = MainFrame
+MinBtn.Text = "-"
+MinBtn.Size = UDim2.new(0, 30, 0, 30)
+MinBtn.Position = UDim2.new(1, -60, 0, 0)
+MinBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+MinBtn.TextColor3 = Color3.new(1, 1, 1)
+
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Parent = MainFrame
+ContentFrame.Size = UDim2.new(1, 0, 1, -30)
+ContentFrame.Position = UDim2.new(0, 0, 0, 30)
+ContentFrame.BackgroundTransparency = 1
+
+MinBtn.MouseButton1Click:Connect(function()
+    ContentFrame.Visible = not ContentFrame.Visible
+    if ContentFrame.Visible then
+        MainFrame.Size = UDim2.new(0, 200, 0, 150)
+        MinBtn.Text = "-"
+    else
+        MainFrame.Size = UDim2.new(0, 200, 0, 30)
+        MinBtn.Text = "+"
+    end
 end)
 
-DungSection:AddSlider("SliderSpeed", {
-    Title = "Tween Speed",
-    Default = 200,
-    Min = 50,
-    Max = 500,
-    Rounding = 0,
-    Callback = function(Value) getgenv().TweenSpeed = Value end
-})
+-- Helper Function untuk Membuat Tombol Toggle
+local function CreateToggleBtn(text, yPos, configKey)
+    local btn = Instance.new("TextButton")
+    btn.Parent = ContentFrame
+    btn.Text = text .. ": OFF"
+    btn.Size = UDim2.new(0, 180, 0, 40)
+    btn.Position = UDim2.new(0, 10, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    
+    btn.MouseButton1Click:Connect(function()
+        getgenv().Config[configKey] = not getgenv().Config[configKey]
+        local status = getgenv().Config[configKey]
+        btn.Text = text .. (status and ": ON" or ": OFF")
+        btn.BackgroundColor3 = status and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
+    end)
+    return btn
+end
 
--- // // // Main Loop Processor // // // --
+-- Buat Tombolnya
+CreateToggleBtn("AUTO DUNGEON", 15, "AutoDungeon")
+CreateToggleBtn("AUTO FARM", 65, "AutoFarm")
+
+-- 5. LOOP UTAMA (LOGIKA JALAN DISINI)
 task.spawn(function()
-    while task.wait(0.5) do
-        -- Update Character Reference jika mati
-        if not LocalCharacter or not LocalCharacter:Parent() then
-            LocalCharacter = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            HumanoidRootPart = LocalCharacter:WaitForChild("HumanoidRootPart")
+    while task.wait(0.2) do -- Loop cek setiap 0.2 detik
+        -- Cek karakter hidup atau mati
+        if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            continue
         end
 
-        -- LOGIKA 1: AUTO ENTER PORTAL
-        if getgenv().AutoDungeon and not processingDungeon then
-            local portal = nil
-            for _, v in pairs(workspace:GetDescendants()) do
-                if v:IsA("BasePart") and (v.Name:lower():find("portal") or v.Name:lower():find("dungeon")) then
-                    portal = v; break
+        -- LOGIKA A: AUTO DUNGEON
+        if getgenv().Config.AutoDungeon then
+            local targetPortal = nil
+            -- Cari objek bernama Portal atau Dungeon
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and (obj.Name:lower():find("portal") or obj.Name:lower():find("dungeon")) then
+                    targetPortal = obj
+                    break
                 end
             end
 
-            if portal then
-                tweenTo(portal.CFrame)
-                if isAtTarget then
-                    processingDungeon = true
-                    InstantEnter()
-                    task.wait(5) -- Cooldown transisi world
-                    processingDungeon = false
+            if targetPortal then
+                SmartMove(targetPortal.CFrame)
+                
+                -- Jika sudah sampai dan skrip tidak sedang sibuk
+                if isAtTarget and not isBusy then
+                    EnterDungeon()
                 end
             end
         end
 
-        -- LOGIKA 2: AUTO CLEAR NPC
-        if getgenv().AutoFarmDung then
-            local enemies = workspace:FindFirstChild("__Main") and workspace.__Main:FindFirstChild("__Enemies") and workspace.__Main.__Enemies:FindFirstChild("Client")
-            if enemies and #enemies:GetChildren() > 0 then
+        -- LOGIKA B: AUTO FARM
+        if getgenv().Config.AutoFarm then
+            local EnemiesFolder = workspace:FindFirstChild("__Main") and workspace.__Main:FindFirstChild("__Enemies") and workspace.__Main.__Enemies:FindFirstChild("Client")
+            
+            if EnemiesFolder then
                 local target = nil
                 local minDist = math.huge
                 
-                for _, v in pairs(enemies:GetChildren()) do
-                    local hrp = v:FindFirstChild("HumanoidRootPart")
-                    local hp = v:FindFirstChild("HealthBar") and v.HealthBar.Main.Bar.Amount
-                    if hrp and hp and hp.ContentText ~= "0 HP" then
-                        local d = (HumanoidRootPart.Position - hrp.Position).Magnitude
-                        if d < minDist then minDist = d; target = v end
+                -- Cari musuh terdekat
+                for _, mob in pairs(EnemiesFolder:GetChildren()) do
+                    local hrp = mob:FindFirstChild("HumanoidRootPart")
+                    local hpBar = mob:FindFirstChild("HealthBar")
+                    
+                    -- Pastikan musuh punya darah dan belum mati
+                    if hrp and hpBar and hpBar.Main.Bar.Amount.ContentText ~= "0 HP" then
+                        local dist = (LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+                        if dist < minDist then
+                            minDist = dist
+                            target = mob
+                        end
                     end
                 end
-
+                
+                -- Eksekusi Target
                 if target then
-                    tweenTo(target.HumanoidRootPart.CFrame * CFrame.new(0, 0, 4))
+                    SmartMove(target.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)) -- Jarak serang 5 studs
+                    
                     if isAtTarget then
-                        Remote:FireServer({[1] = {[1] = {["Event"] = "PunchAttack", ["Enemy"] = target.Name}, [2] = "\4"}})
+                        AttackMob(target.Name)
                     end
                 end
             end
         end
     end
 end)
-
-Fluent:Notify({Title = "Arise Fix", Content = "Script Loaded Successfully!", Duration = 3})
